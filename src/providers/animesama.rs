@@ -1,17 +1,28 @@
-use crate::constants::traits::AnimeProvider;
+use ratatui::{Frame, layout::Rect};
 
-impl AnimeProvider for AnimeSamaState {}
+use crate::providers::state::AnimeProviderState;
 
-impl Default for AnimeSamaState {
+pub struct AnimeSamaProvider {
+    pub state: AnimeProviderState,
+}
+
+impl Default for AnimeSamaProvider {
     fn default() -> Self {
         Self {
-            current_page_path: String::new(),
-            current_page_help: String::new(),
+            state: AnimeProviderState {
+                name: "AnimeSama".into(),
+                full_path: vec!["".into()],
+                helps: vec![
+                    ("[j/k]".into(), "move".into()),
+                    ("[enter]".into(), "select".into()),
+                ],
+            },
         }
     }
 }
 
-pub struct AnimeSamaState {
-    current_page_path: String,
-    current_page_help: String,
+impl AnimeSamaProvider {
+    pub fn view(&self, area: Rect, frame: &mut Frame) {
+        // TODO
+    }
 }
