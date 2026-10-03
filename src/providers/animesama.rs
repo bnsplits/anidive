@@ -16,7 +16,7 @@ impl Default for AnimeSamaProvider {
                 name: "AnimeSama".into(),
                 full_path: vec!["".into()],
                 want_poll: true,
-                poll_timeout: Duration::from_millis(1000),
+                poll_timeout: Some(Duration::from_millis(1000)),
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
                     ("[enter]".into(), "select".into()),

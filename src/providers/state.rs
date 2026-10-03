@@ -5,5 +5,5 @@ pub struct AnimeProviderState {
     pub full_path: Vec<String>,
     pub helps: Vec<(String, String)>,
     pub want_poll: bool,
-    pub poll_timeout: Duration,
+    pub poll_timeout: Option<Duration>,
 }

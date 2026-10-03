@@ -106,8 +106,11 @@ impl App {
     /// Update function
     fn update(&mut self) -> io::Result<()> {
         let state = self.current_page.state();
-        if state.want_poll {
-            if crossterm::event::poll(state.poll_timeout)? {
+
+        if state.want_poll
+            && let Some(timeout) = state.poll_timeout
+        {
+            if crossterm::event::poll(timeout)? {
                 self._handle_event()?
             }
             self.current_page.handle_tick();

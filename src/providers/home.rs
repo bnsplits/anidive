@@ -16,7 +16,7 @@ impl Default for HomeProvider {
                 name: " AniDive ".into(),
                 full_path: vec!["".into()],
                 want_poll: false,
-                poll_timeout: Duration::from_millis(1000),
+                poll_timeout: Option::None,
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
                     ("[enter]".into(), "select".into()),
