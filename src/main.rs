@@ -1,4 +1,3 @@
-mod constants;
 mod providers;
 
 use crossterm::event::{Event, KeyCode, KeyModifiers};
@@ -11,7 +10,7 @@ use ratatui::{
 };
 use std::io;
 
-use crate::{constants::enums::AnimeProviders, providers::home::HomeProvider};
+use crate::{providers::AnimeProviders, providers::home::HomeProvider};
 
 struct App {
     current_page: AnimeProviders,

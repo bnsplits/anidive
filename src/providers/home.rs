@@ -1,9 +1,7 @@
-use std::time::Duration;
-
 use crossterm::event::KeyEvent;
 use ratatui::{Frame, layout::Rect};
 
-use crate::providers::state::AnimeProviderState;
+use crate::providers::AnimeProviderState;
 
 pub struct HomeProvider {
     pub state: AnimeProviderState,
