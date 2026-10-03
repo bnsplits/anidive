@@ -1,7 +1,7 @@
 mod constants;
 mod providers;
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
@@ -105,28 +105,26 @@ impl App {
 
     /// Update function
     fn update(&mut self) -> io::Result<()> {
-        if let Event::Key(key_event) = crossterm::event::read()?
-            && key_event.kind == KeyEventKind::Press
-        {
-            self.handle_key_event(key_event);
-        }
-
-        Ok(())
-    }
-
-    /// Handle key event function
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Char('d') if key_event.modifiers == KeyModifiers::CONTROL => {
-                self.close();
+        let state = self.current_page.state();
+        if state.want_poll {
+            if crossterm::event::poll(state.poll_timeout)? {
+                self._handle_event()?
             }
-            _ => {}
+            self.current_page.handle_tick();
         }
+        self._handle_event()
     }
 
-    // Close the app with double check
-    fn close(&mut self) {
-        self.do_close = true;
+    fn _handle_event(&mut self) -> io::Result<()> {
+        if let Event::Key(key_event) = crossterm::event::read()? {
+            if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL
+            {
+                self.do_close = true;
+                return Ok(());
+            }
+            self.current_page.handle_key(key_event);
+        }
+        Ok(())
     }
 }
 

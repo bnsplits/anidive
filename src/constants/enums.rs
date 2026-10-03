@@ -1,3 +1,4 @@
+use crossterm::event::KeyEvent;
 use ratatui::{Frame, layout::Rect};
 
 use crate::providers::{
@@ -17,17 +18,24 @@ impl AnimeProviders {
         }
     }
 
-    pub fn state_mut(&mut self) -> &mut AnimeProviderState {
-        match self {
-            AnimeProviders::HomePage(p) => &mut p.state,
-            AnimeProviders::AnimeSama(p) => &mut p.state,
-        }
-    }
-
     pub fn render(&self, area: Rect, frame: &mut Frame) {
         match self {
             AnimeProviders::HomePage(p) => p.view(area, frame),
             AnimeProviders::AnimeSama(p) => p.view(area, frame),
+        }
+    }
+
+    pub fn handle_key(&mut self, key_event: KeyEvent) {
+        match self {
+            AnimeProviders::HomePage(p) => p.handle_key(key_event),
+            AnimeProviders::AnimeSama(p) => p.handle_key(key_event),
+        }
+    }
+
+    pub fn handle_tick(&mut self) {
+        match self {
+            AnimeProviders::HomePage(p) => p.handle_tick(),
+            AnimeProviders::AnimeSama(p) => p.handle_tick(),
         }
     }
 }
