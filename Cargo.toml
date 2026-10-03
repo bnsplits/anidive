@@ -4,3 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ratatui = "0.30.2"
+crossterm = "0.29.0"
+# reqwest = "0.13.5"
+# scraper = "0.27.0"
+# tokio = "1.53.1"
+# yt-dlp = "2.8.3"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
