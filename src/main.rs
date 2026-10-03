@@ -4,31 +4,24 @@ mod providers;
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use ratatui::{
     DefaultTerminal,
-    layout::{Constraint, Direction, Flex, Layout},
-    style::{Color, Style},
-    widgets::{Block, Borders, Paragraph},
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Paragraph},
 };
 use std::io;
 
-use crate::{constants::traits::AnimeProvider, providers::animesama::AnimeSamaState};
+use crate::{constants::enums::AnimeProviders, providers::home::HomeProvider};
 
 struct App {
-    current_page: Box<dyn AnimeProvider>,
+    current_page: AnimeProviders,
     do_close: bool,
 }
-
-impl AnimeProvider for SelectionPage {}
-impl Default for SelectionPage {
-    fn default() -> Self {
-        Self {}
-    }
-}
-struct SelectionPage {}
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            current_page: Box::from(SelectionPage::default()),
+            current_page: AnimeProviders::HomePage(HomeProvider::default()),
             do_close: false,
         }
     }
@@ -47,33 +40,64 @@ impl App {
     /// View function
     fn view(&self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         terminal.draw(|frame| {
-            // Main layouts
+            let state = self.current_page.state();
+
+            // Main vertical layout
             let main_vert_layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
-                    Constraint::Length(2),
+                    Constraint::Length(1),
                     Constraint::Fill(1),
-                    Constraint::Length(2),
+                    Constraint::Length(1),
                 ])
                 .split(frame.area());
 
-            let content_layout = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(vec![Constraint::Percentage(75)])
-                .flex(Flex::Center)
-                .split(main_vert_layout[1]);
+            // Content layout
+            let content_layout =
+                main_vert_layout[1].centered_horizontally(Constraint::Percentage(75));
 
-            // Main widgets
-            let top_row = Paragraph::new("Top");
-            frame.render_widget(top_row, main_vert_layout[0]);
-
-            let content = Block::default()
-                .borders(Borders::ALL)
+            // Center content
+            let content_block = Block::bordered()
+                .title(
+                    Line::from(String::from(&state.name))
+                        .style(Style::new().fg(Color::Cyan))
+                        .centered(),
+                )
                 .border_style(Style::new().fg(Color::DarkGray));
-            frame.render_widget(content, content_layout[0]);
+            let content_block_inner = content_block.inner(content_layout);
 
-            let bottom_row = Paragraph::new("Bottom");
-            frame.render_widget(bottom_row, main_vert_layout[2]);
+            // Top bar
+            let mut path_line = Vec::new();
+            for p in &state.full_path {
+                path_line.push(Span::styled("/", Style::new().fg(Color::DarkGray)));
+                path_line.push(Span::styled(
+                    p,
+                    Style::new().fg(Color::White).add_modifier(Modifier::BOLD),
+                ));
+            }
+            let top_bar = Paragraph::new(Line::from(path_line));
+
+            // Bottom bar
+            let mut help_line = Vec::new();
+            for (key, desc) in &state.helps {
+                help_line.push(Span::styled(
+                    format!("{} ", key),
+                    Style::new().fg(Color::Gray),
+                ));
+                help_line.push(Span::styled(
+                    format!("{} ", desc),
+                    Style::new().fg(Color::DarkGray),
+                ));
+                help_line.push(Span::styled(" ", Style::new().fg(Color::Blue)));
+            }
+            help_line.pop();
+            let bottom_bar = Paragraph::new(Line::from(help_line));
+
+            frame.render_widget(top_bar, main_vert_layout[0]);
+            frame.render_widget(bottom_bar, main_vert_layout[2]);
+            frame.render_widget(content_block, content_layout);
+
+            self.current_page.render(content_block_inner, frame);
         })?;
 
         Ok(())
