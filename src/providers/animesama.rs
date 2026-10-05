@@ -13,7 +13,7 @@ impl Default for AnimeSamaProvider {
     fn default() -> Self {
         Self {
             state: AnimeProviderState {
-                name: "AnimeSama".into(),
+                title: " AnimeSama ".into(),
                 full_path: vec!["".into()],
                 want_poll: true,
                 poll_timeout: Some(Duration::from_millis(1000)),

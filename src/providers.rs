@@ -8,11 +8,16 @@ use std::time::Duration;
 use crate::providers::{animesama::AnimeSamaProvider, home::HomeProvider};
 
 pub struct AnimeProviderState {
-    pub name: String,
+    pub title: String,
     pub full_path: Vec<String>,
     pub helps: Vec<(String, String)>,
     pub want_poll: bool,
     pub poll_timeout: Option<Duration>,
+}
+
+#[derive(Clone, Copy)]
+pub enum AnimeProviderNames {
+    AnimeSama,
 }
 
 pub enum AnimeProviders {
@@ -28,7 +33,7 @@ impl AnimeProviders {
         }
     }
 
-    pub fn render(&self, area: Rect, frame: &mut Frame) {
+    pub fn render(&mut self, area: Rect, frame: &mut Frame) {
         match self {
             AnimeProviders::HomePage(p) => p.view(area, frame),
             AnimeProviders::AnimeSama(p) => p.view(area, frame),
@@ -44,7 +49,7 @@ impl AnimeProviders {
 
     pub fn handle_tick(&mut self) {
         match self {
-            AnimeProviders::HomePage(p) => p.handle_tick(),
+            AnimeProviders::HomePage(_) => {}
             AnimeProviders::AnimeSama(p) => p.handle_tick(),
         }
     }

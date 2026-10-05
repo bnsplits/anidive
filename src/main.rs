@@ -10,7 +10,10 @@ use ratatui::{
 };
 use std::io;
 
-use crate::{providers::AnimeProviders, providers::home::HomeProvider};
+use crate::{
+    providers::AnimeProviderNames, providers::AnimeProviders,
+    providers::animesama::AnimeSamaProvider, providers::home::HomeProvider,
+};
 
 struct App {
     current_page: AnimeProviders,
@@ -37,7 +40,7 @@ impl App {
     }
 
     /// View function
-    fn view(&self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    fn view(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         terminal.draw(|frame| {
             let state = self.current_page.state();
 
@@ -58,7 +61,7 @@ impl App {
             // Center content
             let content_block = Block::bordered()
                 .title(
-                    Line::from(String::from(&state.name))
+                    Line::from(String::from(&state.title))
                         .style(Style::new().fg(Color::Cyan))
                         .centered(),
                 )
@@ -78,7 +81,12 @@ impl App {
 
             // Bottom bar
             let mut help_line = Vec::new();
-            for (key, desc) in &state.helps {
+            let helps = [
+                vec![("[ctrl+d]".into(), "exit".into())],
+                state.helps.clone(),
+            ]
+            .concat();
+            for (key, desc) in helps {
                 help_line.push(Span::styled(
                     format!("{} ", key),
                     Style::new().fg(Color::Gray),
@@ -104,6 +112,18 @@ impl App {
 
     /// Update function
     fn update(&mut self) -> io::Result<()> {
+        // Set the new current page if home have selected one
+        if let AnimeProviders::HomePage(home) = &self.current_page
+            && let Some(selected_page_name) = &home.selected_provider
+        {
+            match selected_page_name {
+                AnimeProviderNames::AnimeSama => {
+                    self.current_page = AnimeProviders::AnimeSama(AnimeSamaProvider::default())
+                }
+            }
+            return Ok(());
+        }
+
         let state = self.current_page.state();
 
         if state.want_poll
