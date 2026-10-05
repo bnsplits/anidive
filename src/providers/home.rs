@@ -12,8 +12,8 @@ use crate::providers::{AnimeProviderNames, AnimeProviderState};
 pub struct HomeProvider {
     pub state: AnimeProviderState,
     pub selected_provider: Option<AnimeProviderNames>,
-    pub list_state: ListState,
-    pub list_items: [(String, String, AnimeProviderNames); 2],
+    list_state: ListState,
+    list_items: [(String, String, AnimeProviderNames); 2],
 }
 
 impl Default for HomeProvider {
