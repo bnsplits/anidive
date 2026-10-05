@@ -62,7 +62,7 @@ impl App {
             let content_block = Block::bordered()
                 .title(
                     Line::from(String::from(&state.title))
-                        .style(Style::new().fg(Color::Cyan))
+                        .style(Style::new().fg(Color::Gray))
                         .centered(),
                 )
                 .border_style(Style::new().fg(Color::DarkGray));
