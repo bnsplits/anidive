@@ -8,7 +8,7 @@ use crossterm::{
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Padding, Paragraph},
 };
@@ -136,6 +136,7 @@ impl App {
                 self._handle_event()?
             }
             self.current_page.handle_tick();
+            return Ok(());
         }
         self._handle_event()
     }
@@ -154,7 +155,7 @@ impl App {
                 return Ok(());
             }
 
-            if key_event.code == KeyCode::Char('i')
+            if key_event.code == KeyCode::Char('/')
                 && self.current_page.state().can_change_input_mode
             {
                 self.current_page.state_mut().input_mode = InputMode::Insert;
