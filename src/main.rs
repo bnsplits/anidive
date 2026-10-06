@@ -6,7 +6,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Paragraph},
+    widgets::{Block, Padding, Paragraph},
 };
 use std::io;
 
@@ -45,18 +45,17 @@ impl App {
             let state = self.current_page.state();
 
             // Main vertical layout
-            let main_vert_layout = Layout::default()
+            let [top_bar_layout, content_layout, bottom_bar_layout] = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
                     Constraint::Length(1),
                     Constraint::Fill(1),
                     Constraint::Length(1),
                 ])
-                .split(frame.area());
+                .areas(frame.area());
 
             // Content layout
-            let content_layout =
-                main_vert_layout[1].centered_horizontally(Constraint::Percentage(75));
+            let content_layout = content_layout.centered_horizontally(Constraint::Percentage(75));
 
             // Center content
             let content_block = Block::bordered()
@@ -65,6 +64,7 @@ impl App {
                         .style(Style::new().fg(Color::Gray))
                         .centered(),
                 )
+                .padding(Padding::uniform(1))
                 .border_style(Style::new().fg(Color::DarkGray));
             let content_block_inner = content_block.inner(content_layout);
 
@@ -100,8 +100,8 @@ impl App {
             help_line.pop();
             let bottom_bar = Paragraph::new(Line::from(help_line));
 
-            frame.render_widget(top_bar, main_vert_layout[0]);
-            frame.render_widget(bottom_bar, main_vert_layout[2]);
+            frame.render_widget(top_bar, top_bar_layout);
+            frame.render_widget(bottom_bar, bottom_bar_layout);
             frame.render_widget(content_block, content_layout);
 
             self.current_page.render(content_block_inner, frame);

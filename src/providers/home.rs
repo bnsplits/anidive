@@ -49,9 +49,8 @@ impl Default for HomeProvider {
 
 impl HomeProvider {
     pub fn view(&mut self, area: Rect, frame: &mut Frame) {
-        let layout = Layout::vertical([Constraint::Length(12), Constraint::Fill(1)])
-            .margin(1)
-            .split(area);
+        let [banner_layout, selection_layout] =
+            Layout::vertical([Constraint::Length(12), Constraint::Fill(1)]).areas(area);
 
         let big_banner = Text::from(
             "
@@ -83,14 +82,14 @@ Anime downloader by BnSplit
         )
         .cyan();
 
-        let banner = if layout[0].width < big_banner.width() as u16 {
+        let banner = if banner_layout.width < big_banner.width() as u16 {
             small_banner
         } else {
             big_banner
         };
 
         let banner_layout =
-            layout[0].centered_horizontally(Constraint::Length(banner.width() as u16));
+            banner_layout.centered_horizontally(Constraint::Length(banner.width() as u16));
 
         let list_items = self
             .list_items
@@ -112,7 +111,7 @@ Anime downloader by BnSplit
             .scroll_padding(1);
 
         frame.render_widget(banner, banner_layout);
-        frame.render_stateful_widget(list, layout[1], &mut self.list_state);
+        frame.render_stateful_widget(list, selection_layout, &mut self.list_state);
     }
 
     pub fn handle_key(&mut self, key_event: KeyEvent) {
