@@ -1,6 +1,10 @@
 mod providers;
 
-use crossterm::event::{Event, KeyCode, KeyModifiers};
+use crossterm::{
+    cursor::SetCursorStyle,
+    event::{Event, KeyCode, KeyModifiers},
+    execute,
+};
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
@@ -8,11 +12,10 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Padding, Paragraph},
 };
-use std::io;
+use std::io::{self, stdout};
 
-use crate::{
-    providers::AnimeProviderNames, providers::AnimeProviders,
-    providers::animesama::AnimeSamaProvider, providers::home::HomeProvider,
+use crate::providers::{
+    AnimeProviderNames, AnimeProviders, InputMode, animesama::AnimeSamaProvider, home::HomeProvider,
 };
 
 struct App {
@@ -138,18 +141,41 @@ impl App {
     }
 
     fn _handle_event(&mut self) -> io::Result<()> {
-        if let Event::Key(key_event) = crossterm::event::read()? {
+        let event = crossterm::event::read()?;
+
+        if let InputMode::Insert = self.current_page.state().input_mode {
+            self.current_page.handle_raw_event(&event)
+        }
+
+        if let Event::Key(key_event) = event {
             if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL
             {
                 self.do_close = true;
                 return Ok(());
             }
-            self.current_page.handle_key(key_event);
+
+            if key_event.code == KeyCode::Char('i')
+                && self.current_page.state().can_change_input_mode
+            {
+                self.current_page.state_mut().input_mode = InputMode::Insert;
+            }
+
+            if key_event.code == KeyCode::Esc && self.current_page.state().can_change_input_mode {
+                self.current_page.state_mut().input_mode = InputMode::Normal;
+            }
+
+            if let InputMode::Normal = self.current_page.state().input_mode {
+                self.current_page.handle_key(key_event)
+            }
         }
+
         Ok(())
     }
 }
 
 fn main() -> io::Result<()> {
-    ratatui::run(|terminal| App::default().run(terminal))
+    execute!(stdout(), SetCursorStyle::SteadyBlock)?;
+    ratatui::run(|terminal| App::default().run(terminal))?;
+    execute!(stdout(), SetCursorStyle::DefaultUserShape)?;
+    Ok(())
 }

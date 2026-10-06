@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{List, ListItem, ListState},
 };
 
-use crate::providers::{AnimeProviderNames, AnimeProviderState};
+use crate::providers::{AnimeProviderNames, AnimeProviderState, InputMode};
 
 pub struct HomeProvider {
     pub state: AnimeProviderState,
@@ -37,6 +37,8 @@ impl Default for HomeProvider {
                 title: " Select an anime provider ".into(),
                 full_path: vec!["".into()],
                 want_poll: false,
+                can_change_input_mode: false,
+                input_mode: InputMode::Normal,
                 poll_timeout: Option::None,
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
