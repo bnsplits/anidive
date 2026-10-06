@@ -4,9 +4,11 @@ use crossterm::event::{Event, KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::Style,
+    style::{Color, Modifier, Style},
+    text::{ToSpan, ToText},
     widgets::{Block, Paragraph},
 };
+use throbber_widgets_tui::{Throbber, ThrobberState};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
 use crate::providers::{
@@ -17,12 +19,16 @@ use crate::providers::{
 pub struct AnimeSamaProvider {
     pub state: AnimeProviderState,
     pub input: Input,
+    pub throbber_state: ThrobberState,
+    pub is_searching: bool,
 }
 
 impl Default for AnimeSamaProvider {
     fn default() -> Self {
         Self {
             input: Input::default(),
+            throbber_state: ThrobberState::default(),
+            is_searching: false,
             state: AnimeProviderState {
                 title: " AnimeSama ".into(),
                 full_path: vec!["".into()],
@@ -32,7 +38,7 @@ impl Default for AnimeSamaProvider {
                 poll_timeout: Some(Duration::from_millis(1000)),
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
-                    ("[i]".into(), "insert mode".into()),
+                    ("[/]".into(), "insert mode".into()),
                     ("[escape]".into(), "normal mode".into()),
                     ("[enter]".into(), "confirm".into()),
                 ],
@@ -42,8 +48,8 @@ impl Default for AnimeSamaProvider {
 }
 
 impl AnimeSamaProvider {
-    pub fn view(&self, area: Rect, frame: &mut Frame) {
-        let [search_bar_layout, _results_layout] =
+    pub fn view(&mut self, area: Rect, frame: &mut Frame) {
+        let [search_bar_layout, results_layout] =
             Layout::vertical([Constraint::Length(6), Constraint::Fill(1)]).areas(area);
         let search_bar_layout = search_bar_layout
             .centered_horizontally(Constraint::Percentage(50))
@@ -74,6 +80,23 @@ impl AnimeSamaProvider {
                 search_bar_layout.y + 1,
             ));
         }
+
+        let throbber = Throbber::default()
+            .label("Searching...")
+            .style(Style::default().fg(Color::Gray))
+            .throbber_style(
+                Style::default()
+                    .fg(Color::Gray)
+                    .add_modifier(Modifier::BOLD),
+            )
+            .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
+            .use_type(throbber_widgets_tui::WhichUse::Spin);
+        if self.is_searching {
+            let results_layout = results_layout.centered_horizontally(Constraint::Length(
+                throbber.to_line(&self.throbber_state).width() as u16,
+            ));
+            frame.render_stateful_widget(throbber, results_layout, &mut self.throbber_state);
+        }
     }
 
     pub fn handle_raw_event(&mut self, event: &Event) {
@@ -81,6 +104,9 @@ impl AnimeSamaProvider {
         if let Event::Key(k) = event
             && let KeyCode::Enter = k.code
         {
+            self.is_searching = true;
+            self.state.want_poll = true;
+            self.state.poll_timeout = Some(Duration::from_millis(100));
             self.state.input_mode = Normal;
         }
     }
@@ -90,6 +116,7 @@ impl AnimeSamaProvider {
     }
 
     pub fn handle_tick(&mut self) {
+        self.throbber_state.calc_next();
         //TODO
     }
 }
