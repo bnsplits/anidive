@@ -5,7 +5,6 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::{ToSpan, ToText},
     widgets::{Block, Paragraph},
 };
 use throbber_widgets_tui::{Throbber, ThrobberState};
@@ -16,9 +15,18 @@ use crate::providers::{
     InputMode::{self, Normal},
 };
 
+enum AnimeProviderStep {
+    Search,
+    SelectSeason,
+    SelectLang,
+    SelectEpisodes,
+    Downloads,
+}
+
 pub struct AnimeSamaProvider {
     pub state: AnimeProviderState,
     pub input: Input,
+    current_step: AnimeProviderStep,
     pub throbber_state: ThrobberState,
     pub is_searching: bool,
 }
@@ -29,6 +37,7 @@ impl Default for AnimeSamaProvider {
             input: Input::default(),
             throbber_state: ThrobberState::default(),
             is_searching: false,
+            current_step: AnimeProviderStep::Search,
             state: AnimeProviderState {
                 title: " AnimeSama ".into(),
                 full_path: vec!["".into()],
@@ -48,7 +57,8 @@ impl Default for AnimeSamaProvider {
 }
 
 impl AnimeSamaProvider {
-    pub fn view(&mut self, area: Rect, frame: &mut Frame) {
+    // View search step
+    fn _search_step(&mut self, area: Rect, frame: &mut Frame) {
         let [search_bar_layout, results_layout] =
             Layout::vertical([Constraint::Length(6), Constraint::Fill(1)]).areas(area);
         let search_bar_layout = search_bar_layout
@@ -99,6 +109,28 @@ impl AnimeSamaProvider {
         }
     }
 
+    // View select season step
+    fn _select_season_step(&mut self, area: Rect, frame: &mut Frame) {}
+
+    // View select language step
+    fn _select_lang_step(&mut self, area: Rect, frame: &mut Frame) {}
+
+    // View select episodes step
+    fn _select_episodes_step(&mut self, area: Rect, frame: &mut Frame) {}
+
+    // View downloads step
+    fn _downloads_step(&mut self, area: Rect, frame: &mut Frame) {}
+
+    pub fn view(&mut self, area: Rect, frame: &mut Frame) {
+        match self.current_step {
+            AnimeProviderStep::Search => self._search_step(area, frame),
+            AnimeProviderStep::SelectSeason => self._select_season_step(area, frame),
+            AnimeProviderStep::SelectLang => self._select_lang_step(area, frame),
+            AnimeProviderStep::SelectEpisodes => self._select_episodes_step(area, frame),
+            AnimeProviderStep::Downloads => self._downloads_step(area, frame),
+        }
+    }
+
     pub fn handle_raw_event(&mut self, event: &Event) {
         self.input.handle_event(event);
         if let Event::Key(k) = event
@@ -117,6 +149,5 @@ impl AnimeSamaProvider {
 
     pub fn handle_tick(&mut self) {
         self.throbber_state.calc_next();
-        //TODO
     }
 }

@@ -8,7 +8,7 @@ use crossterm::{
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Padding, Paragraph},
 };
