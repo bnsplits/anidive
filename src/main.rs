@@ -15,18 +15,18 @@ use ratatui::{
 use std::io::{self, stdout};
 
 use crate::pages::{
-    AnimePageNames, AnimePagess, InputMode, animesama::AnimeSamaPage, home::HomePage,
+    AnimePageNames, AnimePages, InputMode, animesama::AnimeSamaPage, home::HomePage,
 };
 
 struct App {
-    current_page: AnimePagess,
+    current_page: AnimePages,
     do_close: bool,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            current_page: AnimePagess::HomePage(HomePage::default()),
+            current_page: AnimePages::HomePage(HomePage::default()),
             do_close: false,
         }
     }
@@ -116,28 +116,17 @@ impl App {
     /// Update function
     fn update(&mut self) -> io::Result<()> {
         // Set the new current page if home have selected one
-        if let AnimePagess::HomePage(home) = &self.current_page
+        if let AnimePages::HomePage(home) = &self.current_page
             && let Some(selected_page_name) = &home.selected_page
         {
             match selected_page_name {
                 AnimePageNames::AnimeSama => {
-                    self.current_page = AnimePagess::AnimeSama(AnimeSamaPage::default())
+                    self.current_page = AnimePages::AnimeSama(AnimeSamaPage::default())
                 }
             }
             return Ok(());
         }
 
-        let state = self.current_page.state();
-
-        if state.want_poll
-            && let Some(timeout) = state.poll_timeout
-        {
-            if crossterm::event::poll(timeout)? {
-                self._handle_event()?
-            }
-            self.current_page.handle_tick();
-            return Ok(());
-        }
         self._handle_event()
     }
 

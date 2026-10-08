@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use ratatui::{
     Frame,
@@ -11,8 +9,8 @@ use throbber_widgets_tui::{Throbber, ThrobberState};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
 use crate::pages::{
-    PageState,
     InputMode::{self, Normal},
+    PageState,
 };
 
 enum AnimePageStep {
@@ -43,8 +41,6 @@ impl Default for AnimeSamaPage {
                 full_path: vec!["".into()],
                 can_change_input_mode: true,
                 input_mode: InputMode::Normal,
-                want_poll: false,
-                poll_timeout: Some(Duration::from_millis(1000)),
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
                     ("[/]".into(), "insert mode".into()),
@@ -137,17 +133,11 @@ impl AnimeSamaPage {
             && let KeyCode::Enter = k.code
         {
             self.is_searching = true;
-            self.state.want_poll = true;
-            self.state.poll_timeout = Some(Duration::from_millis(100));
             self.state.input_mode = Normal;
         }
     }
 
     pub fn handle_key(&mut self, key_event: KeyEvent) {
         //TODO
-    }
-
-    pub fn handle_tick(&mut self) {
-        self.throbber_state.calc_next();
     }
 }

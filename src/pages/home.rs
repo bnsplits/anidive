@@ -36,10 +36,8 @@ impl Default for HomePage {
             state: PageState {
                 title: " Select an anime provider ".into(),
                 full_path: vec!["".into()],
-                want_poll: false,
                 can_change_input_mode: false,
                 input_mode: InputMode::Normal,
-                poll_timeout: Option::None,
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
                     ("[enter]".into(), "select".into()),
