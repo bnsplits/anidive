@@ -7,33 +7,33 @@ use ratatui::{
     widgets::{List, ListItem, ListState},
 };
 
-use crate::providers::{AnimeProviderNames, AnimeProviderState, InputMode};
+use crate::pages::{AnimePageNames, InputMode, PageState};
 
-pub struct HomeProvider {
-    pub state: AnimeProviderState,
-    pub selected_provider: Option<AnimeProviderNames>,
+pub struct HomePage {
+    pub state: PageState,
+    pub selected_page: Option<AnimePageNames>,
     list_state: ListState,
-    list_items: [(String, String, AnimeProviderNames); 2],
+    list_items: [(String, String, AnimePageNames); 2],
 }
 
-impl Default for HomeProvider {
+impl Default for HomePage {
     fn default() -> Self {
         Self {
-            selected_provider: None,
+            selected_page: None,
             list_state: ListState::default().with_selected(Some(0)),
             list_items: [
                 (
                     "Anime Sama".into(),
                     "The best french anime streaming website anime-sama.to".into(),
-                    AnimeProviderNames::AnimeSama,
+                    AnimePageNames::AnimeSama,
                 ),
                 (
                     "Nyaa".into(),
                     "A cat with a keyboard at nyaa.si".into(),
-                    AnimeProviderNames::AnimeSama,
+                    AnimePageNames::AnimeSama,
                 ),
             ],
-            state: AnimeProviderState {
+            state: PageState {
                 title: " Select an anime provider ".into(),
                 full_path: vec!["".into()],
                 want_poll: false,
@@ -49,7 +49,7 @@ impl Default for HomeProvider {
     }
 }
 
-impl HomeProvider {
+impl HomePage {
     pub fn view(&mut self, area: Rect, frame: &mut Frame) {
         let [banner_layout, selection_layout] =
             Layout::vertical([Constraint::Length(12), Constraint::Fill(1)]).areas(area);
@@ -132,12 +132,12 @@ Anime downloader by BnSplit
                     self.list_state.select(Some(previous_index));
                 }
             }
-            KeyCode::Enter => self.selected_provider = Some(self.selected_list_item().2),
+            KeyCode::Enter => self.selected_page = Some(self.selected_list_item().2),
             _ => {}
         }
     }
 
-    fn selected_list_item(&self) -> &(String, String, AnimeProviderNames) {
+    fn selected_list_item(&self) -> &(String, String, AnimePageNames) {
         &self.list_items[self.list_state.selected().unwrap_or_default()]
     }
 }

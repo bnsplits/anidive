@@ -10,12 +10,12 @@ use ratatui::{
 use throbber_widgets_tui::{Throbber, ThrobberState};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
-use crate::providers::{
-    AnimeProviderState,
+use crate::pages::{
+    PageState,
     InputMode::{self, Normal},
 };
 
-enum AnimeProviderStep {
+enum AnimePageStep {
     Search,
     SelectSeason,
     SelectLang,
@@ -23,22 +23,22 @@ enum AnimeProviderStep {
     Downloads,
 }
 
-pub struct AnimeSamaProvider {
-    pub state: AnimeProviderState,
+pub struct AnimeSamaPage {
+    pub state: PageState,
     pub input: Input,
-    current_step: AnimeProviderStep,
+    current_step: AnimePageStep,
     pub throbber_state: ThrobberState,
     pub is_searching: bool,
 }
 
-impl Default for AnimeSamaProvider {
+impl Default for AnimeSamaPage {
     fn default() -> Self {
         Self {
             input: Input::default(),
             throbber_state: ThrobberState::default(),
             is_searching: false,
-            current_step: AnimeProviderStep::Search,
-            state: AnimeProviderState {
+            current_step: AnimePageStep::Search,
+            state: PageState {
                 title: " AnimeSama ".into(),
                 full_path: vec!["".into()],
                 can_change_input_mode: true,
@@ -56,7 +56,7 @@ impl Default for AnimeSamaProvider {
     }
 }
 
-impl AnimeSamaProvider {
+impl AnimeSamaPage {
     // View search step
     fn _search_step(&mut self, area: Rect, frame: &mut Frame) {
         let [search_bar_layout, results_layout] =
@@ -123,11 +123,11 @@ impl AnimeSamaProvider {
 
     pub fn view(&mut self, area: Rect, frame: &mut Frame) {
         match self.current_step {
-            AnimeProviderStep::Search => self._search_step(area, frame),
-            AnimeProviderStep::SelectSeason => self._select_season_step(area, frame),
-            AnimeProviderStep::SelectLang => self._select_lang_step(area, frame),
-            AnimeProviderStep::SelectEpisodes => self._select_episodes_step(area, frame),
-            AnimeProviderStep::Downloads => self._downloads_step(area, frame),
+            AnimePageStep::Search => self._search_step(area, frame),
+            AnimePageStep::SelectSeason => self._select_season_step(area, frame),
+            AnimePageStep::SelectLang => self._select_lang_step(area, frame),
+            AnimePageStep::SelectEpisodes => self._select_episodes_step(area, frame),
+            AnimePageStep::Downloads => self._downloads_step(area, frame),
         }
     }
 

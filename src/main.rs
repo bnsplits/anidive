@@ -1,4 +1,4 @@
-mod providers;
+mod pages;
 
 use crossterm::{
     cursor::SetCursorStyle,
@@ -14,19 +14,19 @@ use ratatui::{
 };
 use std::io::{self, stdout};
 
-use crate::providers::{
-    AnimeProviderNames, AnimeProviders, InputMode, animesama::AnimeSamaProvider, home::HomeProvider,
+use crate::pages::{
+    AnimePageNames, AnimePagess, InputMode, animesama::AnimeSamaPage, home::HomePage,
 };
 
 struct App {
-    current_page: AnimeProviders,
+    current_page: AnimePagess,
     do_close: bool,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            current_page: AnimeProviders::HomePage(HomeProvider::default()),
+            current_page: AnimePagess::HomePage(HomePage::default()),
             do_close: false,
         }
     }
@@ -116,12 +116,12 @@ impl App {
     /// Update function
     fn update(&mut self) -> io::Result<()> {
         // Set the new current page if home have selected one
-        if let AnimeProviders::HomePage(home) = &self.current_page
-            && let Some(selected_page_name) = &home.selected_provider
+        if let AnimePagess::HomePage(home) = &self.current_page
+            && let Some(selected_page_name) = &home.selected_page
         {
             match selected_page_name {
-                AnimeProviderNames::AnimeSama => {
-                    self.current_page = AnimeProviders::AnimeSama(AnimeSamaProvider::default())
+                AnimePageNames::AnimeSama => {
+                    self.current_page = AnimePagess::AnimeSama(AnimeSamaPage::default())
                 }
             }
             return Ok(());
