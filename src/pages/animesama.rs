@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, List, ListItem, ListState, Paragraph},
 };
 use reqwest::blocking::Client;
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use throbber_widgets_tui::{Throbber, ThrobberState};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
@@ -21,16 +21,113 @@ use crate::{
     },
 };
 
+type AnimeResult = (String, String, String);
+type SeasonResult = String;
+
 struct SearchStepState {
     throbber_state: ThrobberState,
     result_list_state: ListState,
-    result_list_items: Vec<(String, String)>,
+    result_list_items: Vec<AnimeResult>,
     last_search_error_message: String,
     is_searching: bool,
     input: Input,
 }
 
+impl SearchStepState {
+    fn search(&mut self, tx: mpsc::Sender<ThreadEvent>) {
+        self.is_searching = true;
+        self.last_search_error_message = String::new();
+
+        let (done_tx, done_rx) = mpsc::channel::<()>();
+
+        /* Make the Throbber spin in another thread */
+        let poll_tx = tx.clone();
+        thread::spawn(move || {
+            while done_rx.try_recv().is_err() {
+                thread::sleep(Duration::from_millis(100));
+                poll_tx
+                    .send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
+                        poll: true,
+                        ..Default::default()
+                    }))
+                    .unwrap();
+            }
+        });
+
+        /* Perform the actual search on another thread */
+        let query_tx = tx.clone();
+        let search_text: String = self.input.value().into();
+        thread::spawn(move || {
+            let res = Client::new()
+                .post("https://anime-sama.to/template-php/defaut/fetch.php")
+                .form(&[("query", search_text)])
+                .send()
+                .map_err(|_e| "network error".into())
+                .and_then(|r| {
+                    r.error_for_status().map_err(|e| {
+                        format!("bad status: {}", e.status().map_or(0, |s| s.as_u16()))
+                    })
+                })
+                .and_then(|r| r.text().map_err(|_e| "could not read result body".into()));
+
+            if let Ok(res) = &res {
+                let fragment = Html::parse_fragment(res);
+
+                let div_sel = Selector::parse("a div").unwrap();
+                let h3_sel = Selector::parse("h3").unwrap();
+                let p_sel = Selector::parse("p").unwrap();
+
+                let items = fragment
+                    .select(&div_sel)
+                    .filter_map(|div| {
+                        let link = div
+                            .parent()
+                            .and_then(ElementRef::wrap)
+                            .and_then(|a| a.value().attr("href"))
+                            .unwrap_or_default()
+                            .to_string();
+                        let title = div
+                            .select(&h3_sel)
+                            .next()?
+                            .text()
+                            .collect::<String>()
+                            .trim()
+                            .to_string();
+                        let desc = div
+                            .select(&p_sel)
+                            .next()?
+                            .text()
+                            .collect::<String>()
+                            .trim()
+                            .to_string();
+                        Some((title, desc, link))
+                    })
+                    .collect();
+
+                let _ = query_tx.send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
+                    search_result: Some(items),
+                    ..Default::default()
+                }));
+            }
+
+            if let Err(e) = &res {
+                let _ = query_tx.send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
+                    search_error_message: e.to_string(),
+                    ..Default::default()
+                }));
+            }
+
+            let _ = done_tx.send(());
+        });
+    }
+}
+
 struct SelectSeasonStepState {
+    throbber_state: ThrobberState,
+    result_list_state: ListState,
+    result_list_items: Vec<SeasonResult>,
+    last_fetch_error_message: String,
+    selected_anime: AnimeResult,
     is_fetching: bool,
 }
 
@@ -51,7 +148,7 @@ enum AnimePageStep {
 #[derive(Default)]
 pub struct AnimeSamaEvent {
     poll: bool,
-    search_result: Option<Vec<(String, String)>>,
+    search_result: Option<Vec<AnimeResult>>,
     search_error_message: String,
 }
 
@@ -131,11 +228,7 @@ impl AnimeSamaPage {
             let throbber = Throbber::default()
                 .label("Searching...")
                 .style(Style::default().fg(Color::Gray))
-                .throbber_style(
-                    Style::default()
-                        .fg(Color::Gray)
-                        .add_modifier(Modifier::BOLD),
-                )
+                .throbber_style(Style::default().fg(Color::Gray).bold())
                 .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
                 .use_type(throbber_widgets_tui::WhichUse::Spin);
 
@@ -183,7 +276,66 @@ impl AnimeSamaPage {
     }
 
     // View select season step
-    fn select_season_step(&mut self, area: Rect, frame: &mut Frame) {}
+    fn select_season_step(&mut self, area: Rect, frame: &mut Frame) {
+        if let AnimePageStep::SelectSeason(step_state) = &mut self.current_step {
+            let [instruction_layout, results_layout] =
+                Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(area);
+
+            /* Instructions text */
+            let instructions = Line::from("Select a season among the available ones")
+                .centered()
+                .dark_gray()
+                .italic();
+            frame.render_widget(instructions, instruction_layout);
+
+            /* Throbber */
+            let throbber = Throbber::default()
+                .label("Please wait...")
+                .style(Style::default().fg(Color::Gray))
+                .throbber_style(Style::default().fg(Color::Gray).bold())
+                .throbber_set(throbber_widgets_tui::BRAILLE_SIX)
+                .use_type(throbber_widgets_tui::WhichUse::Spin);
+
+            /* Result list */
+            let list_items = step_state.result_list_items.iter().map(|item| {
+                ListItem::new(Line::from(vec![
+                    Span::raw(format!("[{}]", &item)).yellow().bold(),
+                ]))
+                .dim()
+            });
+            let list = List::new(list_items)
+                .highlight_style(Style::new().not_dim())
+                .highlight_symbol("> ".light_cyan())
+                .scroll_padding(1);
+
+            /* Rendering */
+            if step_state.is_fetching {
+                frame.render_stateful_widget(
+                    throbber,
+                    results_layout,
+                    &mut step_state.throbber_state,
+                );
+            } else {
+                if step_state.last_fetch_error_message.is_empty() {
+                    frame.render_stateful_widget(
+                        list,
+                        results_layout,
+                        &mut step_state.result_list_state,
+                    );
+                } else {
+                    let results_layout = results_layout.centered_horizontally(Constraint::Length(
+                        step_state.last_fetch_error_message.len() as u16,
+                    ));
+                    frame.render_widget(
+                        Line::from(format!("Oops : {}", step_state.last_fetch_error_message))
+                            .centered()
+                            .light_red(),
+                        results_layout,
+                    );
+                }
+            }
+        }
+    }
 
     // View select language step
     fn select_lang_step(&mut self, area: Rect, frame: &mut Frame) {}
@@ -218,94 +370,8 @@ impl AnimeSamaPage {
                     match k.code {
                         /* Perform search */
                         KeyCode::Enter => {
-                            step_state.is_searching = true;
-                            step_state.last_search_error_message = String::new();
                             self.state.input_mode = Some(Normal);
-
-                            let (done_tx, done_rx) = mpsc::channel::<()>();
-
-                            /* Make the Throbber spin in another thread */
-                            let poll_tx = self.tx.clone();
-                            thread::spawn(move || {
-                                while done_rx.try_recv().is_err() {
-                                    thread::sleep(Duration::from_millis(100));
-                                    poll_tx
-                                        .send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
-                                            poll: true,
-                                            ..Default::default()
-                                        }))
-                                        .unwrap();
-                                }
-                            });
-
-                            /* Perform the actual search on another thread */
-                            let query_tx = self.tx.clone();
-                            let search_text: String = step_state.input.value().into();
-                            thread::spawn(move || {
-                                let res = Client::new()
-                                    .post("https://anime-sama.to/template-php/defaut/fetch.php")
-                                    .form(&[("query", search_text)])
-                                    .send()
-                                    .map_err(|_e| "network error".into())
-                                    .and_then(|r| {
-                                        r.error_for_status().map_err(|e| {
-                                            format!(
-                                                "bad status: {}",
-                                                e.status().map_or(0, |s| s.as_u16())
-                                            )
-                                        })
-                                    })
-                                    .and_then(|r| {
-                                        r.text().map_err(|_e| "could not read result body".into())
-                                    });
-
-                                if let Ok(res) = &res {
-                                    let fragment = Html::parse_fragment(res);
-
-                                    let div_sel = Selector::parse("a div").unwrap();
-                                    let h3_sel = Selector::parse("h3").unwrap();
-                                    let p_sel = Selector::parse("p").unwrap();
-
-                                    let items = fragment
-                                        .select(&div_sel)
-                                        .filter_map(|div| {
-                                            let title = div
-                                                .select(&h3_sel)
-                                                .next()?
-                                                .text()
-                                                .collect::<String>()
-                                                .trim()
-                                                .to_string();
-                                            let desc = div
-                                                .select(&p_sel)
-                                                .next()?
-                                                .text()
-                                                .collect::<String>()
-                                                .trim()
-                                                .to_string();
-                                            Some((title, desc))
-                                        })
-                                        .collect();
-
-                                    let _ = query_tx.send(ThreadEvent::AnimeSamaEvent(
-                                        AnimeSamaEvent {
-                                            search_result: Some(items),
-                                            ..Default::default()
-                                        },
-                                    ));
-                                }
-
-                                if let Err(e) = &res {
-                                    let _ = query_tx.send(ThreadEvent::AnimeSamaEvent(
-                                        AnimeSamaEvent {
-                                            search_error_message: e.to_string(),
-                                            ..Default::default()
-                                        },
-                                    ));
-                                }
-
-                                let _ = done_tx.send(());
-                            });
+                            step_state.search(self.tx.clone());
                         }
 
                         /* Exit input mode */
@@ -316,7 +382,7 @@ impl AnimeSamaPage {
                 }
             }
 
-            AnimePageStep::SelectSeason(step_state) => todo!(),
+            AnimePageStep::SelectSeason(step_state) => {}
             AnimePageStep::SelectLang(step_state) => todo!(),
             AnimePageStep::SelectEpisodes(step_state) => todo!(),
             AnimePageStep::Downloads(step_state) => todo!(),
@@ -335,7 +401,13 @@ impl AnimeSamaPage {
                     }
                 }
 
-                AnimePageStep::SelectSeason(step_state) => todo!(),
+                AnimePageStep::SelectSeason(step_state) => {
+                    if let Some(selected_index) = step_state.result_list_state.selected() {
+                        let len = step_state.result_list_items.len();
+                        let next_index = (selected_index + 1) % (len);
+                        step_state.result_list_state.select(Some(next_index));
+                    }
+                }
                 AnimePageStep::SelectLang(step_state) => todo!(),
                 AnimePageStep::SelectEpisodes(step_state) => todo!(),
                 AnimePageStep::Downloads(step_state) => todo!(),
@@ -351,27 +423,45 @@ impl AnimeSamaPage {
                     }
                 }
 
-                AnimePageStep::SelectSeason(step_state) => todo!(),
+                AnimePageStep::SelectSeason(step_state) => {
+                    if let Some(selected_index) = step_state.result_list_state.selected() {
+                        let len = step_state.result_list_items.len();
+                        let previous_index =
+                            ((selected_index as i8 - 1) + len as i8) as usize % len;
+                        step_state.result_list_state.select(Some(previous_index));
+                    }
+                }
                 AnimePageStep::SelectLang(step_state) => todo!(),
                 AnimePageStep::SelectEpisodes(step_state) => todo!(),
                 AnimePageStep::Downloads(step_state) => todo!(),
             },
 
             KeyCode::Enter => match &mut self.current_step {
-                AnimePageStep::Search(_) => {
-                    self.current_step =
-                        AnimePageStep::SelectSeason(SelectSeasonStepState { is_fetching: false });
+                AnimePageStep::Search(step_state) => {
+                    self.current_step = AnimePageStep::SelectSeason(SelectSeasonStepState {
+                        throbber_state: ThrobberState::default(),
+                        result_list_state: ListState::default().with_selected(Some(0)),
+                        result_list_items: Vec::new(),
+                        last_fetch_error_message: String::new(),
+                        selected_anime: step_state.result_list_items
+                            [step_state.result_list_state.selected().unwrap()]
+                        .clone(),
+                        is_fetching: true,
+                    });
                     self.state.full_path.push("Season".into());
                 }
                 AnimePageStep::SelectSeason(_) => {
-                    self.current_step = AnimePageStep::SelectLang(SelectLangStepState {})
+                    self.current_step = AnimePageStep::SelectLang(SelectLangStepState {});
+                    self.state.full_path.push("Language".into());
                 }
 
                 AnimePageStep::SelectLang(_) => {
-                    self.current_step = AnimePageStep::SelectEpisodes(SelectEpisodesStepState {})
+                    self.current_step = AnimePageStep::SelectEpisodes(SelectEpisodesStepState {});
+                    self.state.full_path.push("Episodes".into());
                 }
                 AnimePageStep::SelectEpisodes(_) => {
-                    self.current_step = AnimePageStep::Downloads(DownloadsStepState {})
+                    self.current_step = AnimePageStep::Downloads(DownloadsStepState {});
+                    self.state.full_path.push("Downloads".into());
                 }
                 AnimePageStep::Downloads(_) => {}
             },
