@@ -30,12 +30,22 @@ struct SearchStepState {
     input: Input,
 }
 
+struct SelectSeasonStepState {
+    is_fetching: bool,
+}
+
+struct SelectLangStepState {}
+
+struct SelectEpisodesStepState {}
+
+struct DownloadsStepState {}
+
 enum AnimePageStep {
     Search(SearchStepState),
-    SelectSeason,
-    SelectLang,
-    SelectEpisodes,
-    Downloads,
+    SelectSeason(SelectSeasonStepState),
+    SelectLang(SelectLangStepState),
+    SelectEpisodes(SelectEpisodesStepState),
+    Downloads(DownloadsStepState),
 }
 
 #[derive(Default)]
@@ -66,7 +76,7 @@ impl AnimeSamaPage {
             }),
             state: PageState {
                 title: " AnimeSama ".into(),
-                full_path: vec!["".into()],
+                full_path: vec!["Search".into()],
                 input_mode: Some(InputMode::Normal),
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
@@ -188,10 +198,10 @@ impl AnimeSamaPage {
     pub fn view(&mut self, area: Rect, frame: &mut Frame) {
         match self.current_step {
             AnimePageStep::Search(_) => self.search_step(area, frame),
-            AnimePageStep::SelectSeason => self.select_season_step(area, frame),
-            AnimePageStep::SelectLang => self.select_lang_step(area, frame),
-            AnimePageStep::SelectEpisodes => self.select_episodes_step(area, frame),
-            AnimePageStep::Downloads => self.downloads_page_step(area, frame),
+            AnimePageStep::SelectSeason(_) => self.select_season_step(area, frame),
+            AnimePageStep::SelectLang(_) => self.select_lang_step(area, frame),
+            AnimePageStep::SelectEpisodes(_) => self.select_episodes_step(area, frame),
+            AnimePageStep::Downloads(_) => self.downloads_page_step(area, frame),
         }
     }
 
@@ -306,10 +316,10 @@ impl AnimeSamaPage {
                 }
             }
 
-            AnimePageStep::SelectSeason => todo!(),
-            AnimePageStep::SelectLang => todo!(),
-            AnimePageStep::SelectEpisodes => todo!(),
-            AnimePageStep::Downloads => todo!(),
+            AnimePageStep::SelectSeason(step_state) => todo!(),
+            AnimePageStep::SelectLang(step_state) => todo!(),
+            AnimePageStep::SelectEpisodes(step_state) => todo!(),
+            AnimePageStep::Downloads(step_state) => todo!(),
         }
     }
 
@@ -325,10 +335,10 @@ impl AnimeSamaPage {
                     }
                 }
 
-                AnimePageStep::SelectSeason => todo!(),
-                AnimePageStep::SelectLang => todo!(),
-                AnimePageStep::SelectEpisodes => todo!(),
-                AnimePageStep::Downloads => todo!(),
+                AnimePageStep::SelectSeason(step_state) => todo!(),
+                AnimePageStep::SelectLang(step_state) => todo!(),
+                AnimePageStep::SelectEpisodes(step_state) => todo!(),
+                AnimePageStep::Downloads(step_state) => todo!(),
             },
 
             KeyCode::Char('k') => match &mut self.current_step {
@@ -341,18 +351,29 @@ impl AnimeSamaPage {
                     }
                 }
 
-                AnimePageStep::SelectSeason => todo!(),
-                AnimePageStep::SelectLang => todo!(),
-                AnimePageStep::SelectEpisodes => todo!(),
-                AnimePageStep::Downloads => todo!(),
+                AnimePageStep::SelectSeason(step_state) => todo!(),
+                AnimePageStep::SelectLang(step_state) => todo!(),
+                AnimePageStep::SelectEpisodes(step_state) => todo!(),
+                AnimePageStep::Downloads(step_state) => todo!(),
             },
 
             KeyCode::Enter => match &mut self.current_step {
-                AnimePageStep::Search(_step_state) => {}
-                AnimePageStep::SelectSeason => todo!(),
-                AnimePageStep::SelectLang => todo!(),
-                AnimePageStep::SelectEpisodes => todo!(),
-                AnimePageStep::Downloads => todo!(),
+                AnimePageStep::Search(_) => {
+                    self.current_step =
+                        AnimePageStep::SelectSeason(SelectSeasonStepState { is_fetching: false });
+                    self.state.full_path.push("Season".into());
+                }
+                AnimePageStep::SelectSeason(_) => {
+                    self.current_step = AnimePageStep::SelectLang(SelectLangStepState {})
+                }
+
+                AnimePageStep::SelectLang(_) => {
+                    self.current_step = AnimePageStep::SelectEpisodes(SelectEpisodesStepState {})
+                }
+                AnimePageStep::SelectEpisodes(_) => {
+                    self.current_step = AnimePageStep::Downloads(DownloadsStepState {})
+                }
+                AnimePageStep::Downloads(_) => {}
             },
 
             _ => {}
@@ -379,10 +400,10 @@ impl AnimeSamaPage {
                 }
             }
 
-            AnimePageStep::SelectSeason => todo!(),
-            AnimePageStep::SelectLang => todo!(),
-            AnimePageStep::SelectEpisodes => todo!(),
-            AnimePageStep::Downloads => todo!(),
+            AnimePageStep::SelectSeason(step_state) => todo!(),
+            AnimePageStep::SelectLang(step_state) => todo!(),
+            AnimePageStep::SelectEpisodes(step_state) => todo!(),
+            AnimePageStep::Downloads(step_state) => todo!(),
         };
     }
 }

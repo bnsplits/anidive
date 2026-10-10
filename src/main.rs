@@ -8,7 +8,7 @@ use crossterm::{
 use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Padding, Paragraph},
 };
@@ -98,12 +98,16 @@ impl App {
 
             /* Top bar */
             let mut path_line = Vec::new();
-            for p in &state.full_path {
-                path_line.push(Span::styled("/", Style::new().fg(Color::DarkGray)));
-                path_line.push(Span::styled(
-                    p,
-                    Style::new().fg(Color::White).add_modifier(Modifier::BOLD),
-                ));
+            let full_path_len = state.full_path.len();
+            for (i, p) in state.full_path.iter().enumerate() {
+                path_line.push(Span::from("/").dark_gray());
+
+                let is_last = i == full_path_len - 1;
+                if is_last {
+                    path_line.push(Span::from(format!(" {} ", p)).white().bold());
+                } else {
+                    path_line.push(Span::from(format!(" {} ", p)).dark_gray().bold());
+                }
             }
             let top_bar = Paragraph::new(Line::from(path_line));
 
