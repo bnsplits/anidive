@@ -10,10 +10,10 @@ pub struct PageState {
     pub title: String,
     pub full_path: Vec<String>,
     pub helps: Vec<(String, String)>,
-    pub input_mode: InputMode,
-    pub can_change_input_mode: bool,
+    pub input_mode: Option<InputMode>,
 }
 
+#[derive(Clone, Copy)]
 pub enum InputMode {
     Normal,
     Insert,

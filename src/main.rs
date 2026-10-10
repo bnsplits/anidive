@@ -127,13 +127,16 @@ impl App {
             return Ok(());
         }
 
-        self._handle_event()
+        self.handle_event()
     }
 
-    fn _handle_event(&mut self) -> io::Result<()> {
+    /// Handle all events
+    fn handle_event(&mut self) -> io::Result<()> {
         let event = crossterm::event::read()?;
 
-        if let InputMode::Insert = self.current_page.state().input_mode {
+        if self.current_page.state().input_mode.is_some()
+            && let InputMode::Insert = self.current_page.state().input_mode.unwrap()
+        {
             self.current_page.handle_raw_event(&event)
         }
 
@@ -144,19 +147,19 @@ impl App {
                 return Ok(());
             }
 
-            if key_event.code == KeyCode::Char('/')
-                && self.current_page.state().can_change_input_mode
-            {
-                self.current_page.state_mut().input_mode = InputMode::Insert;
+            if self.current_page.state().input_mode.is_some() {
+                if key_event.code == KeyCode::Char('/') {
+                    self.current_page.state_mut().input_mode = Some(InputMode::Insert);
+                }
+
+                if key_event.code == KeyCode::Esc {
+                    self.current_page.state_mut().input_mode = Some(InputMode::Normal);
+                }
+
+                return Ok(());
             }
 
-            if key_event.code == KeyCode::Esc && self.current_page.state().can_change_input_mode {
-                self.current_page.state_mut().input_mode = InputMode::Normal;
-            }
-
-            if let InputMode::Normal = self.current_page.state().input_mode {
-                self.current_page.handle_key(key_event)
-            }
+            self.current_page.handle_key(key_event)
         }
 
         Ok(())

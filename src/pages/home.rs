@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{List, ListItem, ListState},
 };
 
-use crate::pages::{AnimePageNames, InputMode, PageState};
+use crate::pages::{AnimePageNames, PageState};
 
 pub struct HomePage {
     pub state: PageState,
@@ -36,8 +36,7 @@ impl Default for HomePage {
             state: PageState {
                 title: " Select an anime provider ".into(),
                 full_path: vec!["".into()],
-                can_change_input_mode: false,
-                input_mode: InputMode::Normal,
+                input_mode: None,
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
                     ("[enter]".into(), "select".into()),
