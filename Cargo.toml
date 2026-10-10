@@ -8,9 +8,8 @@ ratatui = "0.30.2"
 crossterm = "0.29.0"
 tui-input = "0.15.5"
 throbber-widgets-tui = "0.11.1"
-# reqwest = "0.13.5"
-# scraper = "0.27.0"
-# tokio = "1.53.1"
+scraper = "0.27.0"
+reqwest = { version = "0.13.5", features = ["blocking", "form"] }
 # yt-dlp = "2.8.3"
 
 [profile.release]
