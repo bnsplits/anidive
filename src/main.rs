@@ -64,7 +64,7 @@ impl App {
 
         while !self.do_close {
             self.view(terminal)?;
-            self.update(&rx, tx.clone());
+            self.update(tx.clone(), &rx);
         }
 
         Ok(())
@@ -139,7 +139,7 @@ impl App {
     }
 
     /// Update function
-    fn update(&mut self, rx: &mpsc::Receiver<ThreadEvent>, tx: mpsc::Sender<ThreadEvent>) {
+    fn update(&mut self, tx: mpsc::Sender<ThreadEvent>, rx: &mpsc::Receiver<ThreadEvent>) {
         self.handle_event(rx);
 
         /* Set the new current page if home have selected one */
@@ -171,13 +171,15 @@ impl App {
             && let InputMode::Insert = self.current_page.state().input_mode.unwrap()
         {
             self.current_page
-                .handle_crossterm_raw_event(&crossterm_event)
+                .handle_crossterm_raw_event(&crossterm_event);
+            return;
         }
 
         if let Event::Key(key_event) = crossterm_event {
             if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL
             {
                 self.do_close = true;
+                return;
             }
 
             if self.current_page.state().input_mode.is_some() {
@@ -190,7 +192,7 @@ impl App {
                 }
             }
 
-            self.current_page.handle_crossterm_key(key_event)
+            self.current_page.handle_crossterm_key(key_event);
         }
     }
 }
