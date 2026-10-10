@@ -113,7 +113,7 @@ Anime downloader by BnSplit
         frame.render_stateful_widget(list, selection_layout, &mut self.list_state);
     }
 
-    pub fn handle_key(&mut self, key_event: KeyEvent) {
+    pub fn handle_crossterm_key(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('j') => {
                 if let Some(selected_index) = self.list_state.selected() {

@@ -12,11 +12,25 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Padding, Paragraph},
 };
-use std::io::{self, stdout};
-
-use crate::pages::{
-    AnimePageNames, AnimePages, InputMode, animesama::AnimeSamaPage, home::HomePage,
+use std::{
+    io::{self, stdout},
+    sync::mpsc,
+    thread,
 };
+
+use crate::{
+    ThreadEvent::CrosstermEvent,
+    pages::{
+        AnimePageNames, AnimePages, InputMode,
+        animesama::{self, AnimeSamaPage},
+        home::HomePage,
+    },
+};
+
+pub enum ThreadEvent {
+    CrosstermEvent(crossterm::event::Event),
+    AnimeSamaEvent(animesama::AnimeSamaEvent),
+}
 
 struct App {
     current_page: AnimePages,
@@ -35,10 +49,24 @@ impl Default for App {
 impl App {
     /// Run function
     fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        let (tx, rx) = mpsc::channel::<ThreadEvent>();
+
+        /* Thread that catchs crossterm events */
+        let crossterm_tx = tx.clone();
+        thread::spawn(move || {
+            loop {
+                let crossterm_event = crossterm::event::read().unwrap();
+                crossterm_tx
+                    .send(ThreadEvent::CrosstermEvent(crossterm_event))
+                    .unwrap();
+            }
+        });
+
         while !self.do_close {
             self.view(terminal)?;
-            self.update()?;
+            self.update(&rx, tx.clone());
         }
+
         Ok(())
     }
 
@@ -47,7 +75,6 @@ impl App {
         terminal.draw(|frame| {
             let state = self.current_page.state();
 
-            // Main vertical layout
             let [top_bar_layout, content_layout, bottom_bar_layout] = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
@@ -57,10 +84,8 @@ impl App {
                 ])
                 .areas(frame.area());
 
-            // Content layout
+            /* Center content */
             let content_layout = content_layout.centered_horizontally(Constraint::Percentage(75));
-
-            // Center content
             let content_block = Block::bordered()
                 .title(
                     Line::from(String::from(&state.title))
@@ -71,7 +96,7 @@ impl App {
                 .border_style(Style::new().fg(Color::DarkGray));
             let content_block_inner = content_block.inner(content_layout);
 
-            // Top bar
+            /* Top bar */
             let mut path_line = Vec::new();
             for p in &state.full_path {
                 path_line.push(Span::styled("/", Style::new().fg(Color::DarkGray)));
@@ -82,7 +107,7 @@ impl App {
             }
             let top_bar = Paragraph::new(Line::from(path_line));
 
-            // Bottom bar
+            /* Bottom bar */
             let mut help_line = Vec::new();
             let helps = [
                 vec![("[ctrl+d]".into(), "exit".into())],
@@ -114,37 +139,45 @@ impl App {
     }
 
     /// Update function
-    fn update(&mut self) -> io::Result<()> {
-        // Set the new current page if home have selected one
+    fn update(&mut self, rx: &mpsc::Receiver<ThreadEvent>, tx: mpsc::Sender<ThreadEvent>) {
+        self.handle_event(rx);
+
+        /* Set the new current page if home have selected one */
         if let AnimePages::HomePage(home) = &self.current_page
             && let Some(selected_page_name) = &home.selected_page
         {
             match selected_page_name {
                 AnimePageNames::AnimeSama => {
-                    self.current_page = AnimePages::AnimeSama(AnimeSamaPage::default())
+                    self.current_page = AnimePages::AnimeSama(AnimeSamaPage::new(tx));
                 }
             }
-            return Ok(());
         }
-
-        self.handle_event()
     }
 
-    /// Handle all events
-    fn handle_event(&mut self) -> io::Result<()> {
-        let event = crossterm::event::read()?;
+    /// Handle all kind of events
+    fn handle_event(&mut self, rx: &mpsc::Receiver<ThreadEvent>) {
+        let rx_event = rx.recv().unwrap();
 
+        if let CrosstermEvent(crossterm_event) = rx_event {
+            self.handle_crossterm_event(crossterm_event);
+        } else {
+            self.current_page.handle_thread_event(&rx_event);
+        }
+    }
+
+    /// Handle crossterm events
+    fn handle_crossterm_event(&mut self, crossterm_event: Event) {
         if self.current_page.state().input_mode.is_some()
             && let InputMode::Insert = self.current_page.state().input_mode.unwrap()
         {
-            self.current_page.handle_raw_event(&event)
+            self.current_page
+                .handle_crossterm_raw_event(&crossterm_event)
         }
 
-        if let Event::Key(key_event) = event {
+        if let Event::Key(key_event) = crossterm_event {
             if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL
             {
                 self.do_close = true;
-                return Ok(());
             }
 
             if self.current_page.state().input_mode.is_some() {
@@ -155,14 +188,10 @@ impl App {
                 if key_event.code == KeyCode::Esc {
                     self.current_page.state_mut().input_mode = Some(InputMode::Normal);
                 }
-
-                return Ok(());
             }
 
-            self.current_page.handle_key(key_event)
+            self.current_page.handle_crossterm_key(key_event)
         }
-
-        Ok(())
     }
 }
 

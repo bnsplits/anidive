@@ -1,3 +1,5 @@
+use std::sync::mpsc;
+
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use ratatui::{
     Frame,
@@ -8,9 +10,12 @@ use ratatui::{
 use throbber_widgets_tui::{Throbber, ThrobberState};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
-use crate::pages::{
-    InputMode::{self, Normal},
-    PageState,
+use crate::{
+    ThreadEvent,
+    pages::{
+        InputMode::{self, Normal},
+        PageState,
+    },
 };
 
 enum AnimePageStep {
@@ -21,17 +26,22 @@ enum AnimePageStep {
     Downloads,
 }
 
+pub struct AnimeSamaEvent {}
+
 pub struct AnimeSamaPage {
     pub state: PageState,
     pub throbber_state: ThrobberState,
     pub input: Input,
     pub is_searching: bool,
+    tx: mpsc::Sender<ThreadEvent>,
     current_step: AnimePageStep,
 }
 
-impl Default for AnimeSamaPage {
-    fn default() -> Self {
+impl AnimeSamaPage {
+    // New
+    pub fn new(tx: mpsc::Sender<ThreadEvent>) -> Self {
         Self {
+            tx,
             input: Input::default(),
             throbber_state: ThrobberState::default(),
             is_searching: false,
@@ -49,9 +59,7 @@ impl Default for AnimeSamaPage {
             },
         }
     }
-}
 
-impl AnimeSamaPage {
     // View search step
     fn _search_step(&mut self, area: Rect, frame: &mut Frame) {
         let [search_bar_layout, results_layout] =
@@ -127,7 +135,7 @@ impl AnimeSamaPage {
         }
     }
 
-    pub fn handle_raw_event(&mut self, event: &Event) {
+    pub fn handle_crossterm_raw_event(&mut self, event: &Event) {
         self.input.handle_event(event);
         if let Event::Key(k) = event
             && let KeyCode::Enter = k.code
@@ -137,7 +145,11 @@ impl AnimeSamaPage {
         }
     }
 
-    pub fn handle_key(&mut self, key_event: KeyEvent) {
+    pub fn handle_thread_event(&mut self, event: &AnimeSamaEvent) {
+        //TODO
+    }
+
+    pub fn handle_crossterm_key(&mut self, key_event: KeyEvent) {
         //TODO
     }
 }
