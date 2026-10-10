@@ -2,7 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style, Stylize},
+    style::{Style, Stylize},
     text::{Line, Span, Text},
     widgets::{List, ListItem, ListState},
 };
@@ -95,16 +95,15 @@ Anime downloader by BnSplit
             .iter()
             .map(|item| {
                 ListItem::new(Line::from(vec![
-                    Span::raw(format!("[{}]", &item.0)).white().bold(),
+                    Span::raw(format!("[{}]", &item.0)).yellow().bold(),
                     Span::raw(" "),
-                    Span::raw(&item.1).dark_gray().italic(),
+                    Span::raw(&item.1).white(),
                 ]))
                 .dim()
             })
             .collect::<Vec<ListItem>>();
 
         let list = List::new(list_items)
-            .style(Color::DarkGray)
             .highlight_style(Style::new().not_dim())
             .highlight_symbol("> ".light_cyan())
             .scroll_padding(1);
