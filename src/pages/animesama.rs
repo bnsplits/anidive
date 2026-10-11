@@ -4,10 +4,11 @@ use crossterm::event::{Event, KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, List, ListItem, ListState, Paragraph},
 };
+use regex::Regex;
 use reqwest::blocking::Client;
 use scraper::{ElementRef, Html, Selector};
 use throbber_widgets_tui::{Throbber, ThrobberState};
@@ -22,7 +23,9 @@ use crate::{
 };
 
 type AnimeResult = (String, String, String);
-type SeasonResult = String;
+type SeasonResult = (String, String);
+type LangResult = (String, String);
+type SelectedEpisodes = Vec<(String, String, String)>;
 
 struct SearchStepState {
     throbber_state: ThrobberState,
@@ -126,14 +129,98 @@ struct SelectSeasonStepState {
     throbber_state: ThrobberState,
     result_list_state: ListState,
     result_list_items: Vec<SeasonResult>,
-    last_fetch_error_message: String,
+    last_season_fetch_error_message: String,
     selected_anime: AnimeResult,
     is_fetching: bool,
 }
 
-struct SelectLangStepState {}
+impl SelectSeasonStepState {
+    fn fetch_seasons(&mut self, tx: mpsc::Sender<ThreadEvent>) {
+        self.is_fetching = true;
+        self.last_season_fetch_error_message = String::new();
 
-struct SelectEpisodesStepState {}
+        let (done_tx, done_rx) = mpsc::channel::<()>();
+
+        /* Make the Throbber spin in another thread */
+        let poll_tx = tx.clone();
+        thread::spawn(move || {
+            while done_rx.try_recv().is_err() {
+                thread::sleep(Duration::from_millis(100));
+                poll_tx
+                    .send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
+                        poll: true,
+                        ..Default::default()
+                    }))
+                    .unwrap();
+            }
+        });
+
+        /* Perform the actual fetch on another thread */
+        let fetch_tx = tx.clone();
+        let selected_anime = self.selected_anime.clone();
+        thread::spawn(move || {
+            let url = selected_anime.2.clone();
+            let res = Client::new()
+                .get(&url)
+                .send()
+                .map_err(|_e| "network error".into())
+                .and_then(|r| {
+                    r.error_for_status().map_err(|e| {
+                        format!("bad status: {}", e.status().map_or(0, |s| s.as_u16()))
+                    })
+                })
+                .and_then(|r| r.text().map_err(|_e| "could not read result body".into()));
+
+            if let Ok(res) = &res {
+                // Target lines that looks like that : panneauAnime("Saison 1", "saison1/vostfr");
+                let re = Regex::new(r#"(?m)^[ \t]*panneauAnime\("([^"]*)",[ \t]*"([^"]*)"\);?"#)
+                    .unwrap();
+
+                let items = re
+                    .captures_iter(res)
+                    .map(|c| {
+                        (
+                            c[1].to_string(),
+                            format!("{}/{}", url.trim_end_matches('/'), &c[2]),
+                        )
+                    })
+                    .collect();
+
+                let _ = fetch_tx.send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
+                    fetch_seasons_result: Some(items),
+                    ..Default::default()
+                }));
+            }
+
+            if let Err(e) = &res {
+                let _ = fetch_tx.send(ThreadEvent::AnimeSamaEvent(AnimeSamaEvent {
+                    fetch_seasons_error_message: e.to_string(),
+                    ..Default::default()
+                }));
+            }
+
+            let _ = done_tx.send(());
+        });
+    }
+}
+
+struct SelectLangStepState {
+    throbber_state: ThrobberState,
+    result_list_state: ListState,
+    result_list_items: Vec<SeasonResult>,
+    last_language_fetch_error_message: String,
+    selected_season: SeasonResult,
+    is_fetching: bool,
+}
+
+struct SelectEpisodesStepState {
+    throbber_state: ThrobberState,
+    result_list_state: ListState,
+    result_list_items: Vec<SeasonResult>,
+    last_episodes_fetch_error_message: String,
+    selected_lang: LangResult,
+    is_fetching: bool,
+}
 
 struct DownloadsStepState {}
 
@@ -148,8 +235,12 @@ enum AnimePageStep {
 #[derive(Default)]
 pub struct AnimeSamaEvent {
     poll: bool,
+
     search_result: Option<Vec<AnimeResult>>,
     search_error_message: String,
+
+    fetch_seasons_result: Option<Vec<SeasonResult>>,
+    fetch_seasons_error_message: String,
 }
 
 pub struct AnimeSamaPage {
@@ -299,7 +390,7 @@ impl AnimeSamaPage {
             /* Result list */
             let list_items = step_state.result_list_items.iter().map(|item| {
                 ListItem::new(Line::from(vec![
-                    Span::raw(format!("[{}]", &item)).yellow().bold(),
+                    Span::raw(format!("[{}]", &item.0)).yellow().bold(),
                 ]))
                 .dim()
             });
@@ -316,22 +407,17 @@ impl AnimeSamaPage {
                     &mut step_state.throbber_state,
                 );
             } else {
-                if step_state.last_fetch_error_message.is_empty() {
+                if step_state.last_season_fetch_error_message.is_empty() {
                     frame.render_stateful_widget(
                         list,
                         results_layout,
                         &mut step_state.result_list_state,
                     );
                 } else {
-                    let results_layout = results_layout.centered_horizontally(Constraint::Length(
-                        step_state.last_fetch_error_message.len() as u16,
-                    ));
-                    frame.render_widget(
-                        Line::from(format!("Oops : {}", step_state.last_fetch_error_message))
-                            .centered()
-                            .light_red(),
-                        results_layout,
-                    );
+                    let msg = format!("Oops : {}", step_state.last_season_fetch_error_message);
+                    let results_layout =
+                        results_layout.centered_horizontally(Constraint::Length(msg.len() as u16));
+                    frame.render_widget(Line::from(msg).centered().light_red(), results_layout);
                 }
             }
         }
@@ -438,32 +524,52 @@ impl AnimeSamaPage {
 
             KeyCode::Enter => match &mut self.current_step {
                 AnimePageStep::Search(step_state) => {
-                    self.current_step = AnimePageStep::SelectSeason(SelectSeasonStepState {
-                        throbber_state: ThrobberState::default(),
-                        result_list_state: ListState::default().with_selected(Some(0)),
-                        result_list_items: Vec::new(),
-                        last_fetch_error_message: String::new(),
-                        selected_anime: step_state.result_list_items
-                            [step_state.result_list_state.selected().unwrap()]
-                        .clone(),
-                        is_fetching: true,
+                    self.current_step = AnimePageStep::SelectSeason({
+                        let mut season_state = SelectSeasonStepState {
+                            throbber_state: ThrobberState::default(),
+                            result_list_state: ListState::default().with_selected(Some(0)),
+                            result_list_items: Vec::new(),
+                            last_season_fetch_error_message: String::new(),
+                            is_fetching: false,
+                            selected_anime: step_state.result_list_items
+                                [step_state.result_list_state.selected().unwrap()]
+                            .clone(),
+                        };
+                        season_state.fetch_seasons(self.tx.clone());
+                        season_state
                     });
                     self.state.full_path.push("Season".into());
                 }
-                AnimePageStep::SelectSeason(_) => {
-                    self.current_step = AnimePageStep::SelectLang(SelectLangStepState {});
+                AnimePageStep::SelectSeason(step_state) => {
+                    self.current_step = AnimePageStep::SelectLang(SelectLangStepState {
+                        throbber_state: ThrobberState::default(),
+                        result_list_state: ListState::default().with_selected(Some(0)),
+                        result_list_items: Vec::new(),
+                        last_language_fetch_error_message: String::new(),
+                        is_fetching: false,
+                        selected_season: step_state.result_list_items
+                            [step_state.result_list_state.selected().unwrap()]
+                        .clone(),
+                    });
                     self.state.full_path.push("Language".into());
                 }
 
-                AnimePageStep::SelectLang(_) => {
-                    self.current_step = AnimePageStep::SelectEpisodes(SelectEpisodesStepState {});
+                AnimePageStep::SelectLang(step_state) => {
+                    self.current_step = AnimePageStep::SelectEpisodes(SelectEpisodesStepState {
+                        throbber_state: todo!(),
+                        result_list_state: todo!(),
+                        result_list_items: todo!(),
+                        last_episodes_fetch_error_message: todo!(),
+                        selected_lang: todo!(),
+                        is_fetching: todo!(),
+                    });
                     self.state.full_path.push("Episodes".into());
                 }
-                AnimePageStep::SelectEpisodes(_) => {
+                AnimePageStep::SelectEpisodes(step_state) => {
                     self.current_step = AnimePageStep::Downloads(DownloadsStepState {});
                     self.state.full_path.push("Downloads".into());
                 }
-                AnimePageStep::Downloads(_) => {}
+                AnimePageStep::Downloads(step_state) => {}
             },
 
             _ => {}
@@ -490,7 +596,23 @@ impl AnimeSamaPage {
                 }
             }
 
-            AnimePageStep::SelectSeason(step_state) => todo!(),
+            AnimePageStep::SelectSeason(step_state) => {
+                if event.poll {
+                    step_state.throbber_state.calc_next();
+                }
+
+                if event.fetch_seasons_result.is_some() {
+                    step_state.result_list_items = event.fetch_seasons_result.clone().unwrap();
+                    step_state.result_list_state.select(Some(0));
+                    step_state.is_fetching = false;
+                }
+
+                if !event.fetch_seasons_error_message.is_empty() {
+                    step_state.last_season_fetch_error_message =
+                        event.fetch_seasons_error_message.clone();
+                    step_state.is_fetching = false;
+                }
+            }
             AnimePageStep::SelectLang(step_state) => todo!(),
             AnimePageStep::SelectEpisodes(step_state) => todo!(),
             AnimePageStep::Downloads(step_state) => todo!(),
