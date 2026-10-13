@@ -24,12 +24,14 @@ use crate::{
         AnimePageNames, AnimePages, InputMode,
         animesama::{self, AnimeSamaPage},
         home::HomePage,
+        nyaa::{self, NyaaPage},
     },
 };
 
 pub enum ThreadEvent {
     CrosstermEvent(crossterm::event::Event),
     AnimeSamaEvent(animesama::AnimeSamaEvent),
+    NyaaEvent(nyaa::NyaaEvent),
 }
 
 struct App {
@@ -153,6 +155,10 @@ impl App {
             match selected_page_name {
                 AnimePageNames::AnimeSama => {
                     self.current_page = AnimePages::AnimeSama(AnimeSamaPage::new(tx));
+                }
+
+                AnimePageNames::Nyaa => {
+                    self.current_page = AnimePages::Nyaa(NyaaPage::new(tx));
                 }
             }
         }

@@ -30,7 +30,7 @@ impl Default for HomePage {
                 (
                     "Nyaa".into(),
                     "A cat with a keyboard at nyaa.si".into(),
-                    AnimePageNames::AnimeSama,
+                    AnimePageNames::Nyaa,
                 ),
             ],
             state: PageState {
