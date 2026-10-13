@@ -171,6 +171,14 @@ impl App {
 
     /// Handle crossterm events
     fn handle_crossterm_event(&mut self, crossterm_event: Event) {
+        if let Event::Key(key_event) = crossterm_event
+            && key_event.code == KeyCode::Char('d')
+            && key_event.modifiers == KeyModifiers::CONTROL
+        {
+            self.do_close = true;
+            return;
+        }
+
         if self.current_page.state().input_mode.is_some()
             && let InputMode::Insert = self.current_page.state().input_mode.unwrap()
         {
@@ -205,5 +213,6 @@ fn main() -> io::Result<()> {
     execute!(stdout(), SetCursorStyle::SteadyBlock)?;
     ratatui::run(|terminal| App::default().run(terminal))?;
     execute!(stdout(), SetCursorStyle::DefaultUserShape)?;
+    println!("Bye !");
     Ok(())
 }
