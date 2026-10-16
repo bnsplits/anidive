@@ -29,7 +29,7 @@ impl NyaaPage {
             state: PageState {
                 title: " Nyaa.si ".into(),
                 full_path: vec!["Search".into()],
-                input_mode: Some(InputMode::Normal),
+                input_mode: InputMode::Normal,
                 helps: vec![],
             },
         }

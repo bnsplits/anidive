@@ -14,13 +14,14 @@ pub struct PageState {
     pub title: String,
     pub full_path: Vec<String>,
     pub helps: Vec<(String, String)>,
-    pub input_mode: Option<InputMode>,
+    pub input_mode: InputMode,
 }
 
 #[derive(Clone, Copy)]
 pub enum InputMode {
     Normal,
     Insert,
+    None,
 }
 
 #[derive(Clone, Copy)]

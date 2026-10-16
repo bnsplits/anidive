@@ -185,9 +185,7 @@ impl App {
             return;
         }
 
-        if self.current_page.state().input_mode.is_some()
-            && let InputMode::Insert = self.current_page.state().input_mode.unwrap()
-        {
+        if let InputMode::Insert = self.current_page.state().input_mode {
             self.current_page
                 .handle_crossterm_raw_event(&crossterm_event);
             return;
@@ -200,13 +198,13 @@ impl App {
                 return;
             }
 
-            if self.current_page.state().input_mode.is_some() {
+            if !matches!(self.current_page.state().input_mode, InputMode::None) {
                 if key_event.code == KeyCode::Char('/') {
-                    self.current_page.state_mut().input_mode = Some(InputMode::Insert);
+                    self.current_page.state_mut().input_mode = InputMode::Insert;
                 }
 
                 if key_event.code == KeyCode::Esc {
-                    self.current_page.state_mut().input_mode = Some(InputMode::Normal);
+                    self.current_page.state_mut().input_mode = InputMode::Normal;
                 }
             }
 
