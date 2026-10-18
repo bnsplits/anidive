@@ -160,6 +160,7 @@ impl AnimeSamaPage {
                 input_mode: InputMode::Normal,
                 helps: vec![
                     ("[j/k]".into(), "move".into()),
+                    ("[r]".into(), "refresh".into()),
                     ("[/]".into(), "insert mode".into()),
                     ("[escape]".into(), "normal mode".into()),
                     ("[enter]".into(), "confirm".into()),

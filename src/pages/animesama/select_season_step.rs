@@ -92,6 +92,10 @@ impl SelectSeasonStepState {
         key_event: KeyEvent,
     ) -> Option<AnimePageStep> {
         match key_event.code {
+            KeyCode::Char('r') => {
+                self.fetch_seasons(tx);
+            }
+
             KeyCode::Char('j') => {
                 if let Some(selected_index) = self.result_list_state.selected() {
                     let len = self.result_list_items.len();
@@ -130,6 +134,7 @@ impl SelectSeasonStepState {
                 page_state.full_path.push("Language".into());
                 page_state.helps = vec![
                     ("[j/k]".into(), "move".into()),
+                    ("[r]".into(), "refresh".into()),
                     ("[enter]".into(), "confirm".into()),
                 ];
 
@@ -180,6 +185,10 @@ impl SelectSeasonStepState {
 
     /// Fetch seasons
     pub fn fetch_seasons(&mut self, tx: mpsc::Sender<ThreadEvent>) {
+        if self.is_fetching {
+            return;
+        }
+
         self.is_fetching = true;
         self.last_season_fetch_error_message = String::new();
 

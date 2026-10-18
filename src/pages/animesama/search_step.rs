@@ -173,6 +173,10 @@ impl SearchStepState {
         key_event: KeyEvent,
     ) -> Option<AnimePageStep> {
         match key_event.code {
+            KeyCode::Char('r') => {
+                self.search(tx);
+            }
+
             KeyCode::Char('j') => {
                 if let Some(selected_index) = self.result_list_state.selected() {
                     let len = self.result_list_items.len();
@@ -211,6 +215,7 @@ impl SearchStepState {
                 page_state.full_path.push("Season".into());
                 page_state.helps = vec![
                     ("[j/k]".into(), "move".into()),
+                    ("[r]".into(), "refresh".into()),
                     ("[enter]".into(), "confirm".into()),
                 ];
 
@@ -261,6 +266,10 @@ impl SearchStepState {
 
     /// Search
     pub fn search(&mut self, tx: Sender<ThreadEvent>) {
+        if self.is_searching {
+            return;
+        }
+
         self.is_searching = true;
         self.last_search_error_message = String::new();
 

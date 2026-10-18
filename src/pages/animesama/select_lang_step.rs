@@ -93,6 +93,10 @@ impl SelectLangStepState {
         key_event: KeyEvent,
     ) -> Option<AnimePageStep> {
         match key_event.code {
+            KeyCode::Char('r') => {
+                self.fetch_langs(tx);
+            }
+
             KeyCode::Char('j') => {
                 if let Some(selected_index) = self.result_list_state.selected() {
                     let len = self.result_list_items.len();
@@ -130,7 +134,9 @@ impl SelectLangStepState {
                 page_state.input_mode = InputMode::Normal;
                 page_state.full_path.push("Episodes".into());
                 page_state.helps = vec![
-                    ("[h/j/k/l]".into(), "move".into()),
+                    ("[j/k]".into(), "scroll".into()),
+                    ("[h/l]".into(), "select player".into()),
+                    ("[r]".into(), "refresh".into()),
                     ("[/]".into(), "insert mode".into()),
                     ("[escape]".into(), "normal mode".into()),
                     ("[enter]".into(), "confirm".into()),
@@ -139,7 +145,7 @@ impl SelectLangStepState {
                 return Some(AnimePageStep::SelectEpisodes({
                     let mut episodes_state = SelectEpisodesStepState {
                         throbber_state: ThrobberState::default(),
-                        preview_list_state: ListState::default().with_selected(Some(0)),
+                        preview_scroll: 0,
                         result_list_items: Vec::new(),
                         last_episodes_fetch_error_message: String::new(),
                         is_fetching: false,
@@ -185,6 +191,10 @@ impl SelectLangStepState {
 
     /// Fetch langs
     pub fn fetch_langs(&mut self, tx: mpsc::Sender<ThreadEvent>) {
+        if self.is_fetching {
+            return;
+        }
+
         self.is_fetching = true;
         self.last_language_fetch_error_message = String::new();
 
