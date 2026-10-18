@@ -7,7 +7,7 @@ use std::{
 use crossterm::event::{Event, KeyCode, KeyEvent};
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Offset, Rect},
     style::{Color, Style, Stylize},
     text::Line,
     widgets::{Block, List, ListItem, ListState, Paragraph, Wrap},
@@ -41,13 +41,14 @@ impl SearchStepState {
     pub fn view(&mut self, input_mode: InputMode, area: Rect, frame: &mut Frame) {
         let [search_bar_layout, results_layout, description_layout] = Layout::vertical([
             Constraint::Length(3),
-            Constraint::Length(5),
+            Constraint::Length((self.result_list_items.len() as u16).max(1)),
             Constraint::Fill(1),
         ])
         .margin(1)
         .spacing(2)
         .areas(area);
         let search_bar_layout = search_bar_layout.centered_horizontally(Constraint::Percentage(50));
+        let description_layout = description_layout.offset(Offset { x: 0, y: -1 });
 
         let width = search_bar_layout.width.max(2) - 3;
         let scroll = self.input.visual_scroll(width as usize);
@@ -116,6 +117,7 @@ impl SearchStepState {
                             &description
                         })
                         .wrap(Wrap { trim: true })
+                        .italic()
                         .dark_gray(),
                         description_layout,
                     );
@@ -258,7 +260,7 @@ impl SearchStepState {
     }
 
     /// Search
-    pub fn search(&mut self, tx: mpsc::Sender<ThreadEvent>) {
+    pub fn search(&mut self, tx: Sender<ThreadEvent>) {
         self.is_searching = true;
         self.last_search_error_message = String::new();
 
@@ -300,7 +302,7 @@ impl SearchStepState {
 
                 let div_sel = Selector::parse("a div").unwrap();
                 let h3_sel = Selector::parse("h3").unwrap();
-                let p_sel = Selector::parse("p").unwrap();
+                let p_sel = Selector::parse("p.asn-search-result-subtitle").unwrap();
 
                 let items = fragment
                     .select(&div_sel)
