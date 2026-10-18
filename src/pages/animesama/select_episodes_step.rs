@@ -9,9 +9,12 @@ use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
-    symbols,
-    text::{Line, Span},
-    widgets::{Block, List, ListItem, ListState, Paragraph, Tabs},
+    symbols::{
+        self,
+        scrollbar::{Set, VERTICAL},
+    },
+    text::Line,
+    widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Tabs},
 };
 use regex::Regex;
 use reqwest::blocking::Client;
@@ -31,7 +34,7 @@ use crate::{
 
 pub struct SelectEpisodesStepState {
     pub throbber_state: ThrobberState,
-    pub preview_list_state: ListState,
+    pub preview_scroll: u16,
     pub result_list_items: Vec<EpisodePlayer>,
     pub last_episodes_fetch_error_message: String,
     pub selected_lang: LangResult,
@@ -97,29 +100,42 @@ impl SelectEpisodesStepState {
                 /* Players */
                 let tabs = Tabs::new(self.result_list_items.iter().map(|p| p.name.clone()))
                     .style(Color::Gray)
-                    .highlight_style(Style::default().cyan().on_black().bold())
+                    .highlight_style(Style::new().fg(Color::Black).bg(Color::Blue).bold())
                     .select(self.selected_player_index)
                     .divider(symbols::DOT)
                     .padding(" ", " ");
                 frame.render_widget(tabs, tab_area);
 
-                /* Episodes list */
-                let mut list_items: Vec<ListItem> = Vec::new();
-                for episode in &selected_player.episodes {
-                    list_items.push(
-                        ListItem::new(Line::from(vec![
-                            Span::raw(format!("[{}] {}", episode.provider, episode.name))
-                                .yellow()
-                                .bold(),
-                        ]))
-                        .dim(),
-                    );
-                }
-                let list = List::new(list_items)
-                    .highlight_symbol("> ".light_cyan())
-                    .scroll_padding(1);
+                /* Episodes preview */
+                let lines = selected_player
+                    .episodes
+                    .iter()
+                    .map(|e| {
+                        Line::from(format!("[{}] {}", e.provider, e.name))
+                            .gray()
+                            .dim()
+                            .bold()
+                    })
+                    .collect::<Vec<Line>>();
 
-                frame.render_stateful_widget(list, preview_area, &mut self.preview_list_state);
+                let max_scroll = (lines.len() as u16).saturating_sub(preview_area.height);
+                self.preview_scroll = self.preview_scroll.min(max_scroll);
+
+                let preview = Paragraph::new(lines).scroll((self.preview_scroll, 0));
+                frame.render_widget(preview, preview_area);
+
+                let mut sb_state =
+                    ScrollbarState::new(max_scroll as usize).position(self.preview_scroll as usize);
+                let sb = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                    .track_style(Color::DarkGray)
+                    .begin_style(Color::DarkGray)
+                    .end_style(Color::DarkGray)
+                    .symbols(Set {
+                        begin: "",
+                        end: "",
+                        ..VERTICAL
+                    });
+                frame.render_stateful_widget(sb, preview_area, &mut sb_state);
 
                 /* Input bar */
                 let placeholder_text =
@@ -194,30 +210,24 @@ impl SelectEpisodesStepState {
         key_event: KeyEvent,
     ) -> Option<AnimePageStep> {
         match key_event.code {
+            KeyCode::Char('r') => {
+                self.fetch_episodes(tx);
+            }
+
             KeyCode::Char('j') => {
-                if let Some(selected_index) = self.preview_list_state.selected() {
-                    let len = self.result_list_items[self.selected_player_index]
-                        .episodes
-                        .len();
-                    if len == 0 {
-                        return None;
-                    }
-                    let next_index = (selected_index + 1) % (len);
-                    self.preview_list_state.select(Some(next_index));
-                }
+                self.preview_scroll = self.preview_scroll.saturating_add(1);
+            }
+
+            KeyCode::Char('J') => {
+                self.preview_scroll = self.preview_scroll.saturating_add(5);
             }
 
             KeyCode::Char('k') => {
-                if let Some(selected_index) = self.preview_list_state.selected() {
-                    let len = self.result_list_items[self.selected_player_index]
-                        .episodes
-                        .len();
-                    if len == 0 {
-                        return None;
-                    }
-                    let previous_index = (selected_index + len - 1) % len;
-                    self.preview_list_state.select(Some(previous_index));
-                }
+                self.preview_scroll = self.preview_scroll.saturating_sub(1);
+            }
+
+            KeyCode::Char('K') => {
+                self.preview_scroll = self.preview_scroll.saturating_sub(5);
             }
 
             KeyCode::Char('h') => {
@@ -284,7 +294,11 @@ impl SelectEpisodesStepState {
                     page_state.helps = vec![("[enter]".into(), "open folder".into())];
 
                     return Some(AnimePageStep::Downloads({
-                        let mut full_path = page_state.full_path.clone();
+                        let mut full_path = [
+                            ["AnimeSama".to_string()].to_vec(),
+                            page_state.full_path.clone(),
+                        ]
+                        .concat();
                         full_path.pop();
                         full_path.pop();
 
@@ -320,7 +334,7 @@ impl SelectEpisodesStepState {
 
             if fetch_episodes_result.is_some() {
                 self.result_list_items = fetch_episodes_result.clone().unwrap();
-                self.preview_list_state.select(Some(0));
+                self.preview_scroll = 0;
                 self.is_fetching = false;
             }
 
@@ -333,6 +347,10 @@ impl SelectEpisodesStepState {
 
     /// Fetch episodes
     pub fn fetch_episodes(&mut self, tx: mpsc::Sender<ThreadEvent>) {
+        if self.is_fetching {
+            return;
+        }
+
         self.is_fetching = true;
         self.last_episodes_fetch_error_message = String::new();
 
