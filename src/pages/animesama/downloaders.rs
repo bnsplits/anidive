@@ -16,9 +16,9 @@ const RPC_URL: &str = "http://127.0.0.1:6800/jsonrpc";
 fn fmt_eta(secs: u64) -> String {
     let (h, m, s) = (secs / 3600, (secs % 3600) / 60, secs % 60);
     if h > 0 {
-        format!("{h}:{m:02}:{s:02}")
+        format!("{h}h{m:02}m{s:02}s")
     } else {
-        format!("{m:02}:{s:02}")
+        format!("{m:02}m{s:02}s")
     }
 }
 
@@ -192,7 +192,16 @@ pub fn download_m3u8(episode: &Episode, m3u8_url: &str, tx: Sender<ThreadEvent>)
             .unwrap_or(0.0)
             / 100.0;
         let speed = parts.next().unwrap_or("").to_string();
-        let eta = parts.next().unwrap_or("").to_string();
+
+        let eta = parts
+            .next()
+            .and_then(|s| {
+                s.split(':').try_fold(0u64, |acc, x| {
+                    Some(acc * 60 + x.trim().parse::<u64>().ok()?)
+                })
+            })
+            .map(fmt_eta)
+            .unwrap_or_else(|| "--:--".to_string());
 
         let e = Episode {
             name: episode.name.clone(),

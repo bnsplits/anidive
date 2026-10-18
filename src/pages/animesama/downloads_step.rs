@@ -1,5 +1,6 @@
 use std::{
     fs,
+    os::unix::process::CommandExt,
     process::{Command, Stdio},
     sync::mpsc,
     thread,
@@ -96,13 +97,16 @@ impl DownloadsStepState {
                 let gauge = Gauge::default()
                     .gauge_style(Style::new().fg(Color::Blue).bg(Color::Black))
                     .ratio(Clone::clone(percent) as f64)
-                    .label(format!(
-                        "[{}]  [{:.0}%]  [{}]  [Eta: {}]",
-                        episode.name,
-                        percent * 100.0,
-                        if speed.is_empty() { "0B/s" } else { speed },
-                        eta
-                    ));
+                    .label(
+                        format!(
+                            "[{}] - [{:.0}%] - [{}] - [ETA: {}]",
+                            episode.name,
+                            percent * 100.0,
+                            if speed.is_empty() { "0B/s" } else { speed },
+                            if eta.is_empty() { "--:--" } else { eta }
+                        )
+                        .bold(),
+                    );
                 frame.render_widget(gauge, gauge_area);
             }
         }
@@ -118,6 +122,7 @@ impl DownloadsStepState {
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
+                .process_group(0)
                 .spawn();
         }
         None

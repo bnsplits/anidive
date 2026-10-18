@@ -31,7 +31,7 @@ use crate::{
 };
 
 pub fn download_dir() -> PathBuf {
-    PathBuf::from(var("HOME").expect("HOME not set")).join("Animes")
+    PathBuf::from(var("HOME").expect("HOME not set")).join("AniDive")
 }
 
 pub enum AppEvent {
