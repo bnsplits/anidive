@@ -1,3 +1,6 @@
+pub mod downloads_step;
+pub mod search_step;
+
 use std::sync::mpsc;
 
 use crossterm::event::{Event, KeyEvent};
