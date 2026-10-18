@@ -13,7 +13,9 @@ use ratatui::{
     widgets::{Block, Padding, Paragraph},
 };
 use std::{
+    env::var,
     io::{self, stdout},
+    path::PathBuf,
     sync::mpsc,
     thread,
 };
@@ -28,7 +30,17 @@ use crate::{
     },
 };
 
+pub fn download_dir() -> PathBuf {
+    PathBuf::from(var("HOME").expect("HOME not set")).join("Animes")
+}
+
+pub enum AppEvent {
+    EnableRestart,
+    DisableRestart,
+}
+
 pub enum ThreadEvent {
+    AppEvent(AppEvent),
     CrosstermEvent(crossterm::event::Event),
     AnimeSamaEvent(animesama::AnimeSamaEvent),
     NyaaEvent(nyaa::NyaaEvent),
@@ -36,6 +48,7 @@ pub enum ThreadEvent {
 
 struct App {
     current_page: AnimePages,
+    can_restart: bool,
     do_close: bool,
 }
 
@@ -43,6 +56,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             current_page: AnimePages::HomePage(HomePage::default()),
+            can_restart: true,
             do_close: false,
         }
     }
@@ -84,6 +98,7 @@ impl App {
                     Constraint::Fill(1),
                     Constraint::Length(1),
                 ])
+                .spacing(1)
                 .areas(frame.area());
 
             /* Center content */
@@ -117,9 +132,15 @@ impl App {
             let mut help_line = Vec::new();
             let helps = [
                 vec![("[ctrl+d]".into(), "exit".into())],
+                if self.can_restart && !matches!(self.current_page, AnimePages::HomePage(_)) {
+                    [("[ctrl+r]".into(), "restart".into())].to_vec()
+                } else {
+                    [].to_vec()
+                },
                 state.helps.clone(),
             ]
             .concat();
+
             for (key, desc) in helps {
                 help_line.push(Span::styled(
                     format!("{} ", key),
@@ -170,19 +191,41 @@ impl App {
 
         if let CrosstermEvent(crossterm_event) = rx_event {
             self.handle_crossterm_event(crossterm_event);
+        } else if let ThreadEvent::AppEvent(event) = rx_event {
+            self.handle_other_events(event);
         } else {
             self.current_page.handle_thread_event(&rx_event);
+        }
+    }
+
+    /// Handle other events
+    fn handle_other_events(&mut self, event: AppEvent) {
+        match event {
+            AppEvent::EnableRestart => self.can_restart = true,
+            AppEvent::DisableRestart => self.can_restart = false,
         }
     }
 
     /// Handle crossterm events
     fn handle_crossterm_event(&mut self, crossterm_event: Event) {
         if let Event::Key(key_event) = crossterm_event
-            && key_event.code == KeyCode::Char('d')
             && key_event.modifiers == KeyModifiers::CONTROL
         {
-            self.do_close = true;
-            return;
+            match key_event.code {
+                KeyCode::Char('d') => {
+                    self.do_close = true;
+                    return;
+                }
+
+                KeyCode::Char('r') => {
+                    if self.can_restart && !matches!(self.current_page, AnimePages::HomePage(_)) {
+                        self.current_page = AnimePages::HomePage(HomePage::default());
+                    }
+                    return;
+                }
+
+                _ => {}
+            }
         }
 
         if let InputMode::Insert = self.current_page.state().input_mode {
@@ -192,10 +235,22 @@ impl App {
         }
 
         if let Event::Key(key_event) = crossterm_event {
-            if key_event.code == KeyCode::Char('d') && key_event.modifiers == KeyModifiers::CONTROL
-            {
-                self.do_close = true;
-                return;
+            if key_event.modifiers == KeyModifiers::CONTROL {
+                match key_event.code {
+                    KeyCode::Char('d') => {
+                        self.do_close = true;
+                        return;
+                    }
+
+                    KeyCode::Char('r') => {
+                        if self.can_restart && !matches!(self.current_page, AnimePages::HomePage(_))
+                        {
+                            self.current_page = AnimePages::HomePage(HomePage::default());
+                        }
+                        return;
+                    }
+                    _ => {}
+                }
             }
 
             if !matches!(self.current_page.state().input_mode, InputMode::None) {
@@ -214,6 +269,13 @@ impl App {
 }
 
 fn main() -> io::Result<()> {
+    for cmd in ["aria2c", "yt-dlp", "ffmpeg"] {
+        if which::which(cmd).is_err() {
+            eprintln!("Oops: `{cmd}` not found in PATH");
+            std::process::exit(1);
+        }
+    }
+
     execute!(stdout(), SetCursorStyle::SteadyBlock)?;
     ratatui::run(|terminal| App::default().run(terminal))?;
     execute!(stdout(), SetCursorStyle::DefaultUserShape)?;

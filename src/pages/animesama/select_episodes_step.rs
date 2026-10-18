@@ -23,8 +23,8 @@ use crate::{
     pages::{
         InputMode, PageState,
         animesama::{
-            AnimePageStep, AnimeSamaEvent, Episode, EpisodePlayer, EpisodeProvider, LangResult,
-            downloads_step::DownloadsStepState,
+            AnimePageStep, AnimeSamaEvent, DownloadStatus, Episode, EpisodePlayer, EpisodeProvider,
+            LangResult, downloads_step::DownloadsStepState,
         },
     },
 };
@@ -47,10 +47,19 @@ impl SelectEpisodesStepState {
             Layout::vertical([Constraint::Length(2), Constraint::Fill(1)]).areas(area);
 
         /* Instructions text */
-        let instructions = Line::from("Select episodes among the available ones")
-            .centered()
-            .dark_gray()
-            .italic();
+        let instructions = Line::from(if self.result_list_items.is_empty() {
+            "Select episodes among the available ones".to_string()
+        } else {
+            format!(
+                "Select episodes among the '{}' available ones",
+                self.result_list_items[self.selected_player_index]
+                    .episodes
+                    .len()
+            )
+        })
+        .centered()
+        .dark_gray()
+        .italic();
         frame.render_widget(instructions, instruction_layout);
 
         /* Throbber */
@@ -107,17 +116,14 @@ impl SelectEpisodesStepState {
                     );
                 }
                 let list = List::new(list_items)
-                    .highlight_style(Style::new().not_dim())
                     .highlight_symbol("> ".light_cyan())
                     .scroll_padding(1);
 
                 frame.render_stateful_widget(list, preview_area, &mut self.preview_list_state);
 
                 /* Input bar */
-                let placeholder_text = format!(
-                    "Enter the episode range you want (ex: 1 or 5,8 or 1-6 or A for all the '{}')",
-                    selected_player.episodes.len()
-                );
+                let placeholder_text =
+                    "Enter the episode range you want (ex: 1 or 5,8 or 1-6 or A for all)";
                 let input_area = input_area
                     .centered_horizontally(Constraint::Length((placeholder_text.len() + 2) as u16));
                 let width = input_area.width.max(2);
@@ -127,7 +133,7 @@ impl SelectEpisodesStepState {
                 {
                     placeholder_text
                 } else {
-                    self.input.value().into()
+                    self.input.value()
                 };
 
                 let search_field_style = match input_mode {
@@ -265,16 +271,29 @@ impl SelectEpisodesStepState {
                 })();
 
                 if let Some(selected_episodes) = selected_episodes {
+                    let range = input
+                        .to_ascii_lowercase()
+                        .replace("a", &format!("All (1-{})", selected_episodes.len()));
+
                     if let Some(last) = page_state.full_path.last_mut() {
-                        *last = input.to_ascii_lowercase().replace("a", "All");
+                        *last = format!("Range: {}", range);
                     }
 
                     page_state.input_mode = InputMode::None;
                     page_state.full_path.push("Downloads".into());
-                    page_state.helps = vec![];
+                    page_state.helps = vec![("[enter]".into(), "open folder".into())];
 
                     return Some(AnimePageStep::Downloads({
-                        let mut downloads_state = DownloadsStepState { selected_episodes };
+                        let mut full_path = page_state.full_path.clone();
+                        full_path.pop();
+                        full_path.pop();
+
+                        let mut downloads_state = DownloadsStepState {
+                            episodes: selected_episodes,
+                            current_episode: None,
+                            full_dir_path: full_path,
+                            range,
+                        };
                         downloads_state.start_downlaods(tx);
                         downloads_state
                     }));
@@ -366,6 +385,7 @@ impl SelectEpisodesStepState {
                                 Episode {
                                     name: format!("Episode {}", i + 1),
                                     provider: EpisodeProvider::from_url(&url),
+                                    status: DownloadStatus::Pending,
                                     url,
                                 }
                             })

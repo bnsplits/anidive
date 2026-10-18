@@ -94,6 +94,8 @@ impl AnimePages {
             CrosstermEvent(e) => {
                 print!("{:?}", e)
             }
+
+            _ => {}
         }
     }
 }

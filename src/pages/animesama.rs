@@ -1,10 +1,12 @@
+pub mod downloaders;
 pub mod downloads_step;
+pub mod extractors;
 pub mod search_step;
 pub mod select_episodes_step;
 pub mod select_lang_step;
 pub mod select_season_step;
 
-use std::{fmt::Display, sync::mpsc};
+use std::{fmt::Display, path::PathBuf, sync::mpsc};
 
 use crossterm::event::{Event, KeyEvent};
 use ratatui::{Frame, layout::Rect, widgets::ListState};
@@ -32,10 +34,8 @@ enum EpisodeProvider {
     Ansembed,
     Uqload,
     Sendvid,
-    // Sibnet,
     Embed4me,
-    Minochinos,
-    Teresa,
+    Voe,
     Unknown,
 }
 
@@ -45,10 +45,8 @@ impl Display for EpisodeProvider {
             EpisodeProvider::Ansembed => "Ansembed",
             EpisodeProvider::Uqload => "Uqload",
             EpisodeProvider::Sendvid => "Sendvid",
-            // EpisodeProvider::Sibnet => "Sibnet",
             EpisodeProvider::Embed4me => "Embed4me",
-            EpisodeProvider::Minochinos => "Minochinos",
-            EpisodeProvider::Teresa => "Teresa",
+            EpisodeProvider::Voe => "Voe",
             _ => "Unknown",
         };
         write!(f, "{name}")
@@ -61,10 +59,8 @@ impl EpisodeProvider {
             ("ansembed.net", EpisodeProvider::Ansembed),
             ("uqload.", EpisodeProvider::Uqload),
             ("sendvid.com", EpisodeProvider::Sendvid),
-            // ("sibnet.ru", EpisodeProvider::Sibnet),
             ("embed4me.com", EpisodeProvider::Embed4me),
-            ("minochinos.com", EpisodeProvider::Minochinos),
-            ("teresapoliticallearn.com", EpisodeProvider::Teresa),
+            ("teresapoliticallearn.com", EpisodeProvider::Voe),
         ];
 
         HOSTS
@@ -79,6 +75,20 @@ pub struct Episode {
     name: String,
     url: String,
     provider: EpisodeProvider,
+    status: DownloadStatus,
+}
+
+#[derive(Clone)]
+pub enum DownloadStatus {
+    Pending,
+    Running {
+        percent: f32,
+        speed: String,
+        path: PathBuf,
+        eta: String,
+    },
+    Done,
+    Failed,
 }
 
 #[derive(Clone)]
@@ -118,6 +128,10 @@ pub enum AnimeSamaEvent {
         poll: bool,
         fetch_episodes_result: Option<Vec<EpisodePlayer>>,
         fetch_episodes_error_message: String,
+    },
+
+    Downloads {
+        current_episode: Option<Episode>,
     },
 }
 
@@ -190,7 +204,7 @@ impl AnimeSamaPage {
             AnimePageStep::SelectSeason(s) => s.handle_crossterm_key(page_state, tx, key_event),
             AnimePageStep::SelectLang(s) => s.handle_crossterm_key(page_state, tx, key_event),
             AnimePageStep::SelectEpisodes(s) => s.handle_crossterm_key(page_state, tx, key_event),
-            AnimePageStep::Downloads(_) => None,
+            AnimePageStep::Downloads(s) => s.handle_crossterm_key(key_event),
         };
 
         if let Some(next_step) = next_step {
