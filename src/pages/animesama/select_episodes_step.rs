@@ -17,7 +17,10 @@ use ratatui::{
     widgets::{Block, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Tabs},
 };
 use regex::Regex;
-use reqwest::blocking::Client;
+use reqwest::{
+    blocking::Client,
+    header::{HeaderMap, HeaderValue, REFERER},
+};
 use throbber_widgets_tui::{Throbber, ThrobberState};
 use tui_input::{Input, backend::crossterm::EventHandler};
 
@@ -376,16 +379,32 @@ impl SelectEpisodesStepState {
         let selected_lang = self.selected_lang.clone();
         thread::spawn(move || {
             let url = format!("{}/episodes.js", selected_lang.1.clone());
-            let res = Client::new()
-                .get(&url)
-                .send()
-                .map_err(|_e| "network error".into())
-                .and_then(|r| {
-                    r.error_for_status().map_err(|e| {
-                        format!("bad status: {}", e.status().map_or(0, |s| s.as_u16()))
-                    })
-                })
-                .and_then(|r| r.text().map_err(|_e| "could not read result body".into()));
+
+            let res: Result<String, String> = (|| {
+                let mut headers = HeaderMap::new();
+
+                if let Ok(referer) = HeaderValue::from_str(&selected_lang.1) {
+                    headers.insert(REFERER, referer);
+                }
+
+                let client = Client::builder()
+                    .user_agent(
+                        "Mozilla/5.0 (X11; Linux x86_64; rv:157.0) Gecko/20100101 Firefox/157.0",
+                    )
+                    .default_headers(headers)
+                    .build()
+                    .map_err(|_| "could not build client".to_string())?;
+
+                let resp = client
+                    .get(&url)
+                    .send()
+                    .map_err(|_| "network error".to_string())?
+                    .error_for_status()
+                    .map_err(|e| format!("bad status: {}", e.status().map_or(0, |s| s.as_u16())))?;
+
+                resp.text()
+                    .map_err(|_| "could not read result body".to_string())
+            })();
 
             if let Ok(res) = &res {
                 /* Format the episodes.js content into a list of players each having episodes */
