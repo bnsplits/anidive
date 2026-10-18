@@ -17,8 +17,10 @@ use reqwest::blocking::Client;
 use throbber_widgets_tui::{Throbber, ThrobberState};
 
 use crate::{
-    ThreadEvent, pages::{
-        InputMode, PageState, animesama::{
+    ThreadEvent,
+    pages::{
+        InputMode, PageState,
+        animesama::{
             AnimePageStep, AnimeResult, AnimeSamaEvent, SeasonResult,
             select_lang_step::SelectLangStepState,
         },
@@ -216,11 +218,12 @@ impl SelectSeasonStepState {
 
             if let Ok(res) = &res {
                 /* Target lines that looks like that : panneauAnime("Saison 1", "saison1/vostfr"); */
-                let re = Regex::new(r#"(?m)^[ \t]*panneauAnime\("([^"]*)",[ \t]*"([^"]*)"\);?"#)
-                    .unwrap();
+                let re_comment = Regex::new(r"(?s)/\*.*?\*/|//[^\n]*").unwrap();
+                let clean_res = re_comment.replace_all(res, "");
+                let re = Regex::new(r#"panneauAnime\("([^"]*)",\s*"([^"]*)"\)"#).unwrap();
 
                 let items = re
-                    .captures_iter(res)
+                    .captures_iter(&clean_res)
                     .map(|c| {
                         (
                             c[1].to_string(),
