@@ -148,7 +148,10 @@ pub fn download_m3u8(episode: &Episode, m3u8_url: &str, tx: Sender<ThreadEvent>)
     let dir = file_path.parent()?;
     let file_name = file_path.file_name()?.to_str()?.replace('%', "%%");
 
-    let tmp_dir = std::env::temp_dir().join("yt-dlp-tmp").join(dir);
+    let tmp_dir = std::env::temp_dir()
+        .join("anidive")
+        .join("yt-dlp-tmp")
+        .join(dir);
     std::fs::create_dir_all(&tmp_dir).ok()?;
 
     let mut child = Command::new("yt-dlp")
