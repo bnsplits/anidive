@@ -29,7 +29,7 @@ use crate::{
     pages::{
         InputMode, PageState,
         animesama::{
-            AnimePageStep, AnimeSamaEvent, DownloadStatus, Episode, EpisodePlayer, EpisodeProvider,
+            AnimeSamaPageStep, AnimeSamaEvent, DownloadStatus, Episode, EpisodePlayer, EpisodeProvider,
             LangResult, downloads_step::DownloadsStepState,
         },
     },
@@ -185,7 +185,7 @@ impl SelectEpisodesStepState {
         page_state: &mut PageState,
         tx: Sender<ThreadEvent>,
         event: &Event,
-    ) -> Option<AnimePageStep> {
+    ) -> Option<AnimeSamaPageStep> {
         self.input.handle_event(event);
         if let Event::Key(k) = event {
             match k.code {
@@ -211,7 +211,7 @@ impl SelectEpisodesStepState {
         page_state: &mut PageState,
         tx: Sender<ThreadEvent>,
         key_event: KeyEvent,
-    ) -> Option<AnimePageStep> {
+    ) -> Option<AnimeSamaPageStep> {
         match key_event.code {
             KeyCode::Char('r') => {
                 self.fetch_episodes(tx);
@@ -296,7 +296,7 @@ impl SelectEpisodesStepState {
                     page_state.full_path.push("Downloads".into());
                     page_state.helps = vec![("[enter]".into(), "open folder".into())];
 
-                    return Some(AnimePageStep::Downloads({
+                    return Some(AnimeSamaPageStep::Downloads({
                         let mut full_path = [
                             ["AnimeSama".to_string()].to_vec(),
                             page_state.full_path.clone(),

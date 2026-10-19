@@ -22,7 +22,7 @@ use crate::{
     pages::{
         InputMode, PageState,
         animesama::{
-            AnimePageStep, AnimeSamaEvent, SeasonResult,
+            AnimeSamaPageStep, AnimeSamaEvent, SeasonResult,
             select_episodes_step::SelectEpisodesStepState,
         },
     },
@@ -91,7 +91,7 @@ impl SelectLangStepState {
         page_state: &mut PageState,
         tx: Sender<ThreadEvent>,
         key_event: KeyEvent,
-    ) -> Option<AnimePageStep> {
+    ) -> Option<AnimeSamaPageStep> {
         match key_event.code {
             KeyCode::Char('r') => {
                 self.fetch_langs(tx);
@@ -142,7 +142,7 @@ impl SelectLangStepState {
                     ("[enter]".into(), "confirm".into()),
                 ];
 
-                return Some(AnimePageStep::SelectEpisodes({
+                return Some(AnimeSamaPageStep::SelectEpisodes({
                     let mut episodes_state = SelectEpisodesStepState {
                         throbber_state: ThrobberState::default(),
                         preview_scroll: 0,

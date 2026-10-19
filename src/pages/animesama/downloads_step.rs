@@ -18,7 +18,7 @@ use ratatui::{
 use crate::{
     ThreadEvent,
     pages::animesama::{
-        AnimePageStep, AnimeSamaEvent, DownloadStatus, Episode, EpisodeProvider, downloaders,
+        AnimeSamaPageStep, AnimeSamaEvent, DownloadStatus, Episode, EpisodeProvider, downloaders,
         extractors::{DownloadLinkKind, ansembed, embed4me, sendvid, uqload, voe},
     },
 };
@@ -115,7 +115,7 @@ impl DownloadsStepState {
     }
 
     /// Handle crossterm keys
-    pub fn handle_crossterm_key(&mut self, key_event: KeyEvent) -> Option<AnimePageStep> {
+    pub fn handle_crossterm_key(&mut self, key_event: KeyEvent) -> Option<AnimeSamaPageStep> {
         if key_event.code == KeyCode::Enter {
             let _ = Command::new("xdg-open")
                 .arg(crate::download_dir().join(self.full_dir_path.join("/")))

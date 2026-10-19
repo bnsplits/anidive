@@ -22,7 +22,7 @@ use crate::{
     pages::{
         InputMode, PageState,
         animesama::{
-            AnimePageStep, AnimeResult, AnimeSamaEvent, select_season_step::SelectSeasonStepState,
+            AnimeSamaPageStep, AnimeResult, AnimeSamaEvent, select_season_step::SelectSeasonStepState,
         },
     },
 };
@@ -141,7 +141,7 @@ impl SearchStepState {
         page_state: &mut PageState,
         tx: Sender<ThreadEvent>,
         event: &Event,
-    ) -> Option<AnimePageStep> {
+    ) -> Option<AnimeSamaPageStep> {
         if self.is_searching {
             return None;
         }
@@ -171,7 +171,7 @@ impl SearchStepState {
         page_state: &mut PageState,
         tx: Sender<ThreadEvent>,
         key_event: KeyEvent,
-    ) -> Option<AnimePageStep> {
+    ) -> Option<AnimeSamaPageStep> {
         match key_event.code {
             KeyCode::Char('r') => {
                 self.search(tx);
@@ -219,7 +219,7 @@ impl SearchStepState {
                     ("[enter]".into(), "confirm".into()),
                 ];
 
-                return Some(AnimePageStep::SelectSeason({
+                return Some(AnimeSamaPageStep::SelectSeason({
                     let mut season_state = SelectSeasonStepState {
                         throbber_state: ThrobberState::default(),
                         result_list_state: ListState::default().with_selected(Some(0)),

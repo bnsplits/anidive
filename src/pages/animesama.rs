@@ -97,7 +97,7 @@ pub struct EpisodePlayer {
     episodes: Vec<Episode>,
 }
 
-pub enum AnimePageStep {
+pub enum AnimeSamaPageStep {
     Search(SearchStepState),
     SelectSeason(SelectSeasonStepState),
     SelectLang(SelectLangStepState),
@@ -138,7 +138,7 @@ pub enum AnimeSamaEvent {
 pub struct AnimeSamaPage {
     pub state: PageState,
     tx: mpsc::Sender<ThreadEvent>,
-    current_step: AnimePageStep,
+    current_step: AnimeSamaPageStep,
 }
 
 impl AnimeSamaPage {
@@ -146,7 +146,7 @@ impl AnimeSamaPage {
     pub fn new(tx: mpsc::Sender<ThreadEvent>) -> Self {
         Self {
             tx,
-            current_step: AnimePageStep::Search(SearchStepState {
+            current_step: AnimeSamaPageStep::Search(SearchStepState {
                 input: Input::default(),
                 throbber_state: ThrobberState::default(),
                 result_list_state: ListState::default().with_selected(Some(0)),
@@ -173,11 +173,11 @@ impl AnimeSamaPage {
     pub fn view(&mut self, area: Rect, frame: &mut Frame) {
         let input_mode = self.state.input_mode;
         match &mut self.current_step {
-            AnimePageStep::Search(s) => s.view(input_mode, area, frame),
-            AnimePageStep::SelectSeason(s) => s.view(area, frame),
-            AnimePageStep::SelectLang(s) => s.view(area, frame),
-            AnimePageStep::SelectEpisodes(s) => s.view(input_mode, area, frame),
-            AnimePageStep::Downloads(s) => s.view(area, frame),
+            AnimeSamaPageStep::Search(s) => s.view(input_mode, area, frame),
+            AnimeSamaPageStep::SelectSeason(s) => s.view(area, frame),
+            AnimeSamaPageStep::SelectLang(s) => s.view(area, frame),
+            AnimeSamaPageStep::SelectEpisodes(s) => s.view(input_mode, area, frame),
+            AnimeSamaPageStep::Downloads(s) => s.view(area, frame),
         }
     }
 
@@ -186,8 +186,8 @@ impl AnimeSamaPage {
         let page_state = &mut self.state;
         let tx = self.tx.clone();
         let next_step = match &mut self.current_step {
-            AnimePageStep::Search(s) => s.handle_crossterm_raw_event(page_state, tx, event),
-            AnimePageStep::SelectEpisodes(s) => s.handle_crossterm_raw_event(page_state, tx, event),
+            AnimeSamaPageStep::Search(s) => s.handle_crossterm_raw_event(page_state, tx, event),
+            AnimeSamaPageStep::SelectEpisodes(s) => s.handle_crossterm_raw_event(page_state, tx, event),
             _ => None,
         };
 
@@ -201,11 +201,11 @@ impl AnimeSamaPage {
         let page_state = &mut self.state;
         let tx = self.tx.clone();
         let next_step = match &mut self.current_step {
-            AnimePageStep::Search(s) => s.handle_crossterm_key(page_state, tx, key_event),
-            AnimePageStep::SelectSeason(s) => s.handle_crossterm_key(page_state, tx, key_event),
-            AnimePageStep::SelectLang(s) => s.handle_crossterm_key(page_state, tx, key_event),
-            AnimePageStep::SelectEpisodes(s) => s.handle_crossterm_key(page_state, tx, key_event),
-            AnimePageStep::Downloads(s) => s.handle_crossterm_key(key_event),
+            AnimeSamaPageStep::Search(s) => s.handle_crossterm_key(page_state, tx, key_event),
+            AnimeSamaPageStep::SelectSeason(s) => s.handle_crossterm_key(page_state, tx, key_event),
+            AnimeSamaPageStep::SelectLang(s) => s.handle_crossterm_key(page_state, tx, key_event),
+            AnimeSamaPageStep::SelectEpisodes(s) => s.handle_crossterm_key(page_state, tx, key_event),
+            AnimeSamaPageStep::Downloads(s) => s.handle_crossterm_key(key_event),
         };
 
         if let Some(next_step) = next_step {
@@ -216,11 +216,11 @@ impl AnimeSamaPage {
     /// Handle thread events
     pub fn handle_thread_event(&mut self, event: &AnimeSamaEvent) {
         match &mut self.current_step {
-            AnimePageStep::Search(s) => s.handle_thread_event(event),
-            AnimePageStep::SelectSeason(s) => s.handle_thread_event(event),
-            AnimePageStep::SelectLang(s) => s.handle_thread_event(event),
-            AnimePageStep::SelectEpisodes(s) => s.handle_thread_event(event),
-            AnimePageStep::Downloads(s) => s.handle_thread_event(event),
+            AnimeSamaPageStep::Search(s) => s.handle_thread_event(event),
+            AnimeSamaPageStep::SelectSeason(s) => s.handle_thread_event(event),
+            AnimeSamaPageStep::SelectLang(s) => s.handle_thread_event(event),
+            AnimeSamaPageStep::SelectEpisodes(s) => s.handle_thread_event(event),
+            AnimeSamaPageStep::Downloads(s) => s.handle_thread_event(event),
         };
     }
 }
