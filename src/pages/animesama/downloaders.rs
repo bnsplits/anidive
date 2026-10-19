@@ -144,12 +144,12 @@ pub fn download_m3u8(episode: &Episode, m3u8_url: &str, tx: Sender<ThreadEvent>)
         return Some(());
     };
 
-    let tmp_dir = std::env::temp_dir().join("yt-dlp-tmp");
-    std::fs::create_dir_all(&tmp_dir).ok()?;
-
     let file_path = path.with_extension("mp4");
     let dir = file_path.parent()?;
     let file_name = file_path.file_name()?.to_str()?.replace('%', "%%");
+
+    let tmp_dir = std::env::temp_dir().join("yt-dlp-tmp").join(dir);
+    std::fs::create_dir_all(&tmp_dir).ok()?;
 
     let mut child = Command::new("yt-dlp")
     .args([
