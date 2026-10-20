@@ -22,6 +22,20 @@ fn fmt_eta(secs: u64) -> String {
     }
 }
 
+fn fmt_speed(speed: &str) -> String {
+    let speed = speed.trim();
+    let split = speed
+        .find(|c: char| c.is_alphabetic())
+        .unwrap_or(speed.len());
+    let (value, unit) = speed.split_at(split);
+
+    if value.is_empty() || unit.is_empty() {
+        return speed.to_string();
+    }
+
+    format!("{} {}", value.trim_end(), unit.trim_start())
+}
+
 fn rpc(client: &reqwest::blocking::Client, method: &str, params: Value) -> Option<Value> {
     let body = json!({ "jsonrpc": "2.0", "id": "1", "method": method, "params": params });
     let resp: Value = client.post(RPC_URL).json(&body).send().ok()?.json().ok()?;
@@ -115,7 +129,7 @@ pub fn download_mp4(episode: &Episode, extracted_url: &str, tx: Sender<ThreadEve
                 provider: episode.provider,
                 status: DownloadStatus::Running {
                     percent,
-                    speed: format!("{:.1} MB/s", num("downloadSpeed") / 1_000_000.0),
+                    speed: fmt_speed(&format!("{:.1} MB/s", num("downloadSpeed") / 1_000_000.0)),
                     path: path.clone(),
                     eta,
                 },
@@ -194,7 +208,7 @@ pub fn download_m3u8(episode: &Episode, m3u8_url: &str, tx: Sender<ThreadEvent>)
             .parse::<f32>()
             .unwrap_or(0.0)
             / 100.0;
-        let speed = parts.next().unwrap_or("").to_string();
+        let speed = fmt_speed(parts.next().unwrap_or(""));
 
         let eta = parts
             .next()

@@ -91,7 +91,7 @@ impl DownloadsStepState {
                             "[{}] - [{:.0}%] - [{}] - [ETA: {}]",
                             episode.name,
                             percent * 100.0,
-                            if speed.is_empty() { "0B/s" } else { speed },
+                            if speed.is_empty() { "0 B/s" } else { speed },
                             if eta.is_empty() { "--:--" } else { eta }
                         )
                         .bold(),
