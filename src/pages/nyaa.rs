@@ -13,15 +13,26 @@ use ratatui::{
 
 use crate::{
     ThreadEvent,
-    pages::{InputMode, PageState},
+    pages::{
+        InputMode, PageState,
+        nyaa::{downloads_step::DownloadsStepState, search_step::SearchStepState},
+    },
 };
+
+pub enum NyaaPageStep {
+    Search(SearchStepState),
+    Downloads(DownloadsStepState),
+}
 
 #[derive(Default)]
 pub struct NyaaEvent {}
 
+pub struct NyaaResult {}
+
 pub struct NyaaPage {
     pub state: PageState,
     tx: mpsc::Sender<ThreadEvent>,
+    current_step: NyaaPageStep,
 }
 
 impl NyaaPage {
@@ -29,6 +40,14 @@ impl NyaaPage {
     pub fn new(tx: mpsc::Sender<ThreadEvent>) -> Self {
         Self {
             tx,
+            current_step: NyaaPageStep::Search(SearchStepState {
+                throbber_state: todo!(),
+                result_list_state: todo!(),
+                result_list_items: todo!(),
+                last_search_error_message: todo!(),
+                is_searching: todo!(),
+                input: todo!(),
+            }),
             state: PageState {
                 title: " Nyaa.si ".into(),
                 full_path: vec!["Search".into()],
@@ -40,8 +59,11 @@ impl NyaaPage {
 
     /// Handle views
     pub fn view(&mut self, area: Rect, frame: &mut Frame) {
-        Paragraph::new(Line::from("Page in construction ...").centered())
-            .render(area, frame.buffer_mut());
+        let input_mode = self.state.input_mode;
+        match &mut self.current_step {
+            NyaaPageStep::Search(s) => s.view(input_mode, area, frame),
+            NyaaPageStep::Downloads(s) => s.view(input_mode, area, frame),
+        }
     }
 
     /// Handle crossterm raw events
