@@ -25,9 +25,9 @@ use crate::{
     },
 };
 
-type AnimeResult = (String, String, String);
-type SeasonResult = (String, String);
-type LangResult = (String, String);
+type AnimeResult = (String, String, String); // title, description, link
+type SeasonResult = (String, String); // name, url
+type LangResult = (String, String); // language, url
 
 #[derive(Clone, Copy)]
 enum EpisodeProvider {
@@ -187,7 +187,9 @@ impl AnimeSamaPage {
         let tx = self.tx.clone();
         let next_step = match &mut self.current_step {
             AnimeSamaPageStep::Search(s) => s.handle_crossterm_raw_event(page_state, tx, event),
-            AnimeSamaPageStep::SelectEpisodes(s) => s.handle_crossterm_raw_event(page_state, tx, event),
+            AnimeSamaPageStep::SelectEpisodes(s) => {
+                s.handle_crossterm_raw_event(page_state, tx, event)
+            }
             _ => None,
         };
 
@@ -204,7 +206,9 @@ impl AnimeSamaPage {
             AnimeSamaPageStep::Search(s) => s.handle_crossterm_key(page_state, tx, key_event),
             AnimeSamaPageStep::SelectSeason(s) => s.handle_crossterm_key(page_state, tx, key_event),
             AnimeSamaPageStep::SelectLang(s) => s.handle_crossterm_key(page_state, tx, key_event),
-            AnimeSamaPageStep::SelectEpisodes(s) => s.handle_crossterm_key(page_state, tx, key_event),
+            AnimeSamaPageStep::SelectEpisodes(s) => {
+                s.handle_crossterm_key(page_state, tx, key_event)
+            }
             AnimeSamaPageStep::Downloads(s) => s.handle_crossterm_key(key_event),
         };
 
