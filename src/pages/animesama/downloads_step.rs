@@ -71,90 +71,9 @@ impl DownloadsStepState {
 
         frame.render_widget(completed_row, completed_area);
 
-        /* Gauge + preview + 'All done !' area */
-        let all_done = completed.len() + failed.len() == self.episodes.len();
-        if all_done {
+        if completed.len() + failed.len() == self.episodes.len() {
             frame.render_widget(Line::from("All done !").centered(), gauge_area);
         } else {
-            /* Preview */
-            let status_color = |s: &DownloadStatus| match s {
-                DownloadStatus::Pending => Color::DarkGray,
-                DownloadStatus::Running { .. } => Color::LightYellow,
-                DownloadStatus::Done => Color::LightGreen,
-                DownloadStatus::Failed => Color::Red,
-            };
-
-            let name_w = self
-                .episodes
-                .iter()
-                .map(|e| e.name.chars().count())
-                .max()
-                .unwrap_or(0);
-            let sep = " • ";
-            let sep_w = sep.chars().count();
-
-            /* name + space + icon == (1 column) */
-            let entry_w = name_w + 2;
-
-            /* Leave one column for the scrollbar */
-            let cols = ((preview_area.width as usize + sep_w) / (entry_w + sep_w))
-                .max(1)
-                .min(self.episodes.len().max(1));
-            let block_w = cols * entry_w + (cols - 1) * sep_w;
-
-            let lines: Vec<Line> = self
-                .episodes
-                .chunks(cols)
-                .map(|row| {
-                    let mut spans: Vec<Span> = Vec::new();
-                    for (i, e) in row.iter().enumerate() {
-                        let color = status_color(&e.status);
-                        let icon = match &e.status {
-                            DownloadStatus::Pending => "",
-                            DownloadStatus::Running { .. } => "",
-                            DownloadStatus::Done => "",
-                            DownloadStatus::Failed => "",
-                        };
-
-                        spans.push(Span::from(format!("{:<name_w$} ", e.name)).fg(color));
-                        spans.push(Span::from(icon).fg(color));
-
-                        if i + 1 != row.len() {
-                            spans.push(Span::from(sep).dark_gray());
-                        }
-                    }
-                    Line::from(spans)
-                })
-                .collect();
-
-            let max_scroll = (lines.len() as u16).saturating_sub(preview_area.height);
-            self.preview_scroll = self.preview_scroll.min(max_scroll);
-
-            let grid_area = preview_area.centered_horizontally(Constraint::Length(block_w as u16));
-
-            frame.render_widget(
-                Paragraph::new(lines).scroll((self.preview_scroll, 0)),
-                grid_area,
-            );
-
-            /* Scrollbar */
-            if max_scroll > 0 {
-                let mut sb_state =
-                    ScrollbarState::new(max_scroll as usize).position(self.preview_scroll as usize);
-                let sb = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-                    .track_style(Color::DarkGray)
-                    .thumb_style(Color::White)
-                    .begin_style(Color::DarkGray)
-                    .end_style(Color::DarkGray)
-                    .symbols(Set {
-                        thumb: "│",
-                        begin: "",
-                        end: "",
-                        ..VERTICAL
-                    });
-                frame.render_stateful_widget(sb, preview_area, &mut sb_state);
-            }
-
             /* Gauge */
             if let Some(episode) = &self.current_episode
                 && let DownloadStatus::Running {
@@ -179,6 +98,85 @@ impl DownloadsStepState {
                     );
                 frame.render_widget(gauge, gauge_area);
             }
+        }
+
+        /* Preview */
+        let status_color = |s: &DownloadStatus| match s {
+            DownloadStatus::Pending => Color::DarkGray,
+            DownloadStatus::Running { .. } => Color::LightYellow,
+            DownloadStatus::Done => Color::LightGreen,
+            DownloadStatus::Failed => Color::Red,
+        };
+
+        let name_w = self
+            .episodes
+            .iter()
+            .map(|e| e.name.chars().count())
+            .max()
+            .unwrap_or(0);
+        let sep = " • ";
+        let sep_w = sep.chars().count();
+
+        /* name + space + icon == (1 column) */
+        let entry_w = name_w + 2;
+
+        /* Leave one column for the scrollbar */
+        let cols = ((preview_area.width as usize + sep_w) / (entry_w + sep_w))
+            .max(1)
+            .min(self.episodes.len().max(1));
+        let block_w = cols * entry_w + (cols - 1) * sep_w;
+
+        let lines: Vec<Line> = self
+            .episodes
+            .chunks(cols)
+            .map(|row| {
+                let mut spans: Vec<Span> = Vec::new();
+                for (i, e) in row.iter().enumerate() {
+                    let color = status_color(&e.status);
+                    let icon = match &e.status {
+                        DownloadStatus::Pending => "",
+                        DownloadStatus::Running { .. } => "",
+                        DownloadStatus::Done => "",
+                        DownloadStatus::Failed => "",
+                    };
+
+                    spans.push(Span::from(format!("{:<name_w$} ", e.name)).fg(color));
+                    spans.push(Span::from(icon).fg(color));
+
+                    if i + 1 != row.len() {
+                        spans.push(Span::from(sep).dark_gray());
+                    }
+                }
+                Line::from(spans)
+            })
+            .collect();
+
+        let max_scroll = (lines.len() as u16).saturating_sub(preview_area.height);
+        self.preview_scroll = self.preview_scroll.min(max_scroll);
+
+        let grid_area = preview_area.centered_horizontally(Constraint::Length(block_w as u16));
+
+        frame.render_widget(
+            Paragraph::new(lines).scroll((self.preview_scroll, 0)),
+            grid_area,
+        );
+
+        /* Scrollbar */
+        if max_scroll > 0 {
+            let mut sb_state =
+                ScrollbarState::new(max_scroll as usize).position(self.preview_scroll as usize);
+            let sb = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .track_style(Color::DarkGray)
+                .thumb_style(Color::White)
+                .begin_style(Color::DarkGray)
+                .end_style(Color::DarkGray)
+                .symbols(Set {
+                    thumb: "│",
+                    begin: "",
+                    end: "",
+                    ..VERTICAL
+                });
+            frame.render_stateful_widget(sb, preview_area, &mut sb_state);
         }
     }
 
