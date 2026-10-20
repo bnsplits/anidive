@@ -150,7 +150,7 @@ impl App {
                     format!("{} ", desc),
                     Style::new().fg(Color::DarkGray),
                 ));
-                help_line.push(Span::styled(" ", Style::new().fg(Color::Blue)));
+                help_line.push(Span::styled("• ", Color::LightBlue));
             }
             help_line.pop();
             let bottom_bar = Paragraph::new(Line::from(help_line));

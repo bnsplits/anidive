@@ -24,12 +24,12 @@ impl Default for HomePage {
             list_items: [
                 (
                     "Anime Sama".into(),
-                    "The best french anime streaming website anime-sama.to".into(),
+                    "The best french anime streaming website - anime-sama.to".into(),
                     AnimePageNames::AnimeSama,
                 ),
                 (
                     "Nyaa".into(),
-                    "A cat with a keyboard at nyaa.si".into(),
+                    "A cat with a keyboard - nyaa.si".into(),
                     AnimePageNames::Nyaa,
                 ),
             ],
