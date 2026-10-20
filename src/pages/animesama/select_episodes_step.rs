@@ -29,8 +29,8 @@ use crate::{
     pages::{
         InputMode, PageState,
         animesama::{
-            AnimeSamaPageStep, AnimeSamaEvent, DownloadStatus, Episode, EpisodePlayer, EpisodeProvider,
-            LangResult, downloads_step::DownloadsStepState,
+            AnimeSamaEvent, AnimeSamaPageStep, DownloadStatus, Episode, EpisodePlayer,
+            EpisodeProvider, LangResult, downloads_step::DownloadsStepState,
         },
     },
 };
@@ -131,9 +131,11 @@ impl SelectEpisodesStepState {
                     ScrollbarState::new(max_scroll as usize).position(self.preview_scroll as usize);
                 let sb = Scrollbar::new(ScrollbarOrientation::VerticalRight)
                     .track_style(Color::DarkGray)
+                    .thumb_style(Color::White)
                     .begin_style(Color::DarkGray)
                     .end_style(Color::DarkGray)
                     .symbols(Set {
+                        thumb: "│",
                         begin: "",
                         end: "",
                         ..VERTICAL
@@ -294,7 +296,10 @@ impl SelectEpisodesStepState {
 
                     page_state.input_mode = InputMode::None;
                     page_state.full_path.push("Downloads".into());
-                    page_state.helps = vec![("[enter]".into(), "open folder".into())];
+                    page_state.helps = vec![
+                        ("[enter]".into(), "open folder".into()),
+                        ("[j/k]".into(), "scroll".into()),
+                    ];
 
                     return Some(AnimeSamaPageStep::Downloads({
                         let mut full_path = [
@@ -310,6 +315,7 @@ impl SelectEpisodesStepState {
                             current_episode: None,
                             full_dir_path: full_path,
                             range,
+                            preview_scroll: 0,
                         };
                         downloads_state.start_downlaods(tx);
                         downloads_state
