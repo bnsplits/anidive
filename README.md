@@ -14,10 +14,10 @@ A simple TUI anime downloader for Linux
 
 ### Option 1: Using my Arch Linux Repository
 
-- **Set up the bn-arch-repo:**
+**Set up the bn-arch-repo:**
   Follow the instructions at [bnsplits/bn-arch-repo](https://github.com/bnsplits/bn-arch-repo)
 
-- **Install anidive:**
+**Install anidive:**
 
   ```bash
   sudo pacman -S anidive
@@ -27,20 +27,14 @@ A simple TUI anime downloader for Linux
 
 **Requirements**
 
-- Rust
+- `rust`
 - `aria2c`
 - `yt-dlp`
 - `ffmpeg`
 - `xdg-open`
 
-**Build**
+**Install anidive:**
 
 ```sh
-cargo build --release
-```
-
-**Run**
-
-```sh
-./target/release/anidive
+cargo install --path .
 ```
