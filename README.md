@@ -1,8 +1,8 @@
 # AniDive
 
-A simple TUI anime downloader for Linux
+A TUI anime downloader for Linux
 
-![AniDive](assets/screenshot.png)
+![AniDive](assets/demo.gif)
 
 ## Features
 
